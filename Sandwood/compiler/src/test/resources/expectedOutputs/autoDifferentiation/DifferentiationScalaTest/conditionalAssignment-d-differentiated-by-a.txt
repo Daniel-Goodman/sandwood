@@ -1,0 +1,31 @@
+Initial Graph
+if(guard)
+	d = a;
+else
+	d = (a - (b * c));
+
+
+Constants
+
+
+Allocator
+
+
+Differential Graph: 'd' differentiated by 'a'
+double diff$d$a$var33;
+if(guard)
+	diff$d$a$var33 = 1.0;
+else
+	diff$d$a$var33 = (1.0 - ((b * 0.0) + (c * 0.0)));
+diff$d$a = diff$d$a$var33;
+
+
+Optimised
+
+// Substituted "diff$d$a$var33" with its value "1.0".
+diff$d$a = 1.0
+
+Additional Constants
+
+
+Updated Allocator

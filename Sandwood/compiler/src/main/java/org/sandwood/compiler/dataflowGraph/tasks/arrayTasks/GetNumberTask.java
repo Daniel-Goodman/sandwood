@@ -15,6 +15,7 @@ import java.util.Set;
 
 import org.sandwood.compiler.compilation.CompilationContext;
 import org.sandwood.compiler.dataflowGraph.Sandwood;
+import org.sandwood.compiler.dataflowGraph.autoDiff.DifferentialInfo;
 import org.sandwood.compiler.dataflowGraph.scopes.GlobalScope;
 import org.sandwood.compiler.dataflowGraph.scopes.Scope;
 import org.sandwood.compiler.dataflowGraph.scopes.ScopeStack;
@@ -27,6 +28,7 @@ import org.sandwood.compiler.dataflowGraph.variables.Variable;
 import org.sandwood.compiler.dataflowGraph.variables.VariableType;
 import org.sandwood.compiler.dataflowGraph.variables.arrayVariable.ArrayVariable;
 import org.sandwood.compiler.dataflowGraph.variables.arrayVariable.ArrayVariable.OuterArrayDesc;
+import org.sandwood.compiler.dataflowGraph.variables.scalarVariables.DoubleVariable;
 import org.sandwood.compiler.dataflowGraph.variables.scalarVariables.IntVariable;
 import org.sandwood.compiler.dataflowGraph.variables.scalarVariables.NumberVariable;
 import org.sandwood.compiler.exceptions.SandwoodModelException;
@@ -265,5 +267,51 @@ public class GetNumberTask<A extends NumberVariable<A>> extends GetTask<A> imple
             substitutions.add(forScope);
         }
         return IRTree.load(innerName);
+    }
+
+    @Override
+    public DoubleVariable getDifferential(DoubleVariable variable, CompilationContext compilationCtx) {
+        /*
+         * If the variable is not contained in the task then a double constant of zero will be returned to prevent the
+         * construction of arrays that will only contain zeros.
+         */
+        if(!containsVariable(variable))
+            return DoubleVariable.doubleVariable(0.0);
+        else {
+            ArrayVariable<DoubleVariable> doubleArray = (ArrayVariable<DoubleVariable>) array;
+            ArrayVariable<DoubleVariable> diffArray = doubleArray.getDifferential(variable, scope(), id(),
+                    compilationCtx);
+
+            // Obtain the get(...) on the generated differential array.
+            return diffArray.get(index);
+        }
+    }
+
+    @Override
+    public boolean isDifferentiable(DoubleVariable variable) {
+        return getDifferentialInfo(variable).isDifferentiable();
+    }
+
+    @Override
+    public DifferentialInfo getDifferentialInfo(DoubleVariable variable) {
+        if(index.containsVariable(variable))
+            return new DifferentialInfo(false, true);
+
+        boolean differentiable = true;
+        boolean containsVariable = false;
+
+        Set<PutTask<A>> puts = array.getPuts(scope(), id());
+        for(PutTask<A> put:puts) {
+            NumberVariable<A> value = (NumberVariable<A>) put.value;
+
+            DifferentialInfo i = value.getDifferentialInfo(variable);
+            differentiable = differentiable && i.isDifferentiable();
+            containsVariable = containsVariable || i.containsVariable();
+
+            if(put.index.containsVariable(variable))
+                return new DifferentialInfo(false, true);
+        }
+
+        return new DifferentialInfo(differentiable, containsVariable);
     }
 }

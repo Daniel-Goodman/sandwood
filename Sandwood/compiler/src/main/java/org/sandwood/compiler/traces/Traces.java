@@ -316,8 +316,6 @@ public abstract class Traces {
      */
     public abstract Set<Variable<?>> getAllSampleVariables();
 
-    public abstract Set<Variable<?>> getIntermediates();
-
     /**
      * Method to return all the non-random variables in the graph intermediate or otherwise.
      *
@@ -335,14 +333,6 @@ public abstract class Traces {
      * @return
      */
     public abstract List<Set<SampleTask<?, ?>>> getRandomVariablesPerArgument(RandomVariable<?, ?> random);
-
-    /**
-     * Method to get all the random variables that directly contribute to the result of a variable v.
-     *
-     * @param v
-     * @return
-     */
-    public abstract Set<RandomVariable<?, ?>> getSourceRandomVariables(Variable<?> v);
 
     // ******************* Methods for generating back traces ********************************//
     /**
@@ -411,8 +401,6 @@ public abstract class Traces {
      * @return All the sample tasks in the model.
      */
     public abstract Set<SampleTask<?, ?>> getAllSampleTasks();
-
-    public abstract Set<Variable<?>> getIntermediateSampleVarDependencies(Variable<?> v);
 
     public abstract Set<Variable<?>> getRequiredIntermediates(Variable<?> v);
 
@@ -541,6 +529,14 @@ public abstract class Traces {
      * @return
      */
     public abstract Set<TraceHandle> getVariableObservationsTraces(Variable<?> v);
+
+    /**
+     * A method to add variables constructed by the auto differentiation code.
+     * 
+     * @param v              The Variable to add.
+     * @param compilationCtx The compilation context
+     */
+    public abstract void addDifferentialVariable(Variable<?> v, CompilationContext compilationCtx);
 
     // Recursive method to construct the cross product of the sets in each of the
     // argument positions.

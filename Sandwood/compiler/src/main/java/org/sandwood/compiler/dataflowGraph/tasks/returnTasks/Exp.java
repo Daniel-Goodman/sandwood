@@ -1,7 +1,7 @@
 /*
  * Sandwood
  *
- * Copyright (c) 2019-2024, Oracle and/or its affiliates
+ * Copyright (c) 2019-2026, Oracle and/or its affiliates
  *
  * Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl/
  */
@@ -9,6 +9,7 @@
 package org.sandwood.compiler.dataflowGraph.tasks.returnTasks;
 
 import org.sandwood.compiler.compilation.CompilationContext;
+import org.sandwood.compiler.dataflowGraph.autoDiff.DifferentialInfo;
 import org.sandwood.compiler.dataflowGraph.tasks.DFType;
 import org.sandwood.compiler.dataflowGraph.tasks.DataflowTask;
 import org.sandwood.compiler.dataflowGraph.tasks.NumberProducingDataflowTaskImplementation;
@@ -44,8 +45,7 @@ public class Exp<A extends NumberVariable<A>> extends NumberProducingDataflowTas
     }
 
     @Override
-    public IRTreeReturn<DoubleVariable> getForwardIRinternal(
-            CompilationContext compilationCtx) {
+    public IRTreeReturn<DoubleVariable> getForwardIRinternal(CompilationContext compilationCtx) {
         return IRTree.exp(input.getForwardIR(compilationCtx));
     }
 
@@ -80,5 +80,16 @@ public class Exp<A extends NumberVariable<A>> extends NumberProducingDataflowTas
     @Override
     public IRTreeReturn<DoubleVariable> getMin(CompilationContext compilationCtx) {
         return IRTree.exp(input.getMin(compilationCtx));
+    }
+
+    @Override
+    protected DoubleVariable getDifferentialInternal(DoubleVariable variable, CompilationContext compilationCtx) {
+        // e^f(x) differential is e^f(x)*f'(x).
+        return output.times(input.getDifferential(variable, compilationCtx));
+    }
+
+    @Override
+    public DifferentialInfo getDifferentialInfo(DoubleVariable variable) {
+        return input.getDifferentialInfo(variable);
     }
 }

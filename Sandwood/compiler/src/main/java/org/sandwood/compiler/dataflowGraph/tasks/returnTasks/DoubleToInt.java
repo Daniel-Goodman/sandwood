@@ -1,7 +1,7 @@
 /*
  * Sandwood
  *
- * Copyright (c) 2019-2024, Oracle and/or its affiliates
+ * Copyright (c) 2019-2026, Oracle and/or its affiliates
  *
  * Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl/
  */
@@ -9,6 +9,7 @@
 package org.sandwood.compiler.dataflowGraph.tasks.returnTasks;
 
 import org.sandwood.compiler.compilation.CompilationContext;
+import org.sandwood.compiler.dataflowGraph.autoDiff.DifferentialInfo;
 import org.sandwood.compiler.dataflowGraph.tasks.DFType;
 import org.sandwood.compiler.dataflowGraph.tasks.DataflowTask;
 import org.sandwood.compiler.dataflowGraph.tasks.NumberProducingDataflowTaskImplementation;
@@ -36,8 +37,7 @@ public class DoubleToInt extends NumberProducingDataflowTaskImplementation<IntVa
     }
 
     @Override
-    protected IRTreeReturn<IntVariable> getForwardIRinternal(
-            CompilationContext compilationCtx) {
+    protected IRTreeReturn<IntVariable> getForwardIRinternal(CompilationContext compilationCtx) {
         return IRTree.castToInteger(input.getForwardIR(compilationCtx));
     }
 
@@ -70,6 +70,17 @@ public class DoubleToInt extends NumberProducingDataflowTaskImplementation<IntVa
     @Override
     public IRTreeReturn<IntVariable> getMin(CompilationContext compilationCtx) {
         return IRTree.castToInteger(input.getMin(compilationCtx));
+    }
+
+    @Override
+    protected DoubleVariable getDifferentialInternal(DoubleVariable variable, CompilationContext compilationCtx) {
+        return DoubleVariable.doubleVariable(0.0);
+    }
+
+    @Override
+    public DifferentialInfo getDifferentialInfo(DoubleVariable variable) {
+        boolean containsVar = input.containsVariable(variable);
+        return new DifferentialInfo(!containsVar, containsVar);
     }
 
     /* Factory methods for construction */

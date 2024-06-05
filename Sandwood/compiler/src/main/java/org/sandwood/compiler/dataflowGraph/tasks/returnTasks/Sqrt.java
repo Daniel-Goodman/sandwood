@@ -10,6 +10,7 @@ package org.sandwood.compiler.dataflowGraph.tasks.returnTasks;
 
 import org.sandwood.compiler.compilation.CompilationContext;
 import org.sandwood.compiler.compilation.ExternalFunction;
+import org.sandwood.compiler.dataflowGraph.autoDiff.DifferentialInfo;
 import org.sandwood.compiler.dataflowGraph.tasks.DFType;
 import org.sandwood.compiler.dataflowGraph.tasks.DataflowTask;
 import org.sandwood.compiler.dataflowGraph.tasks.NumberProducingDataflowTaskImplementation;
@@ -74,6 +75,17 @@ public class Sqrt<A extends NumberVariable<A>> extends NumberProducingDataflowTa
     @Override
     public IRTreeReturn<DoubleVariable> getMin(CompilationContext compilationCtx) {
         return IRTree.functionCallReturn(ExternalFunction.SQRT, VariableType.DoubleVariable, a.getMin(compilationCtx));
+    }
+
+    @Override
+    public DifferentialInfo getDifferentialInfo(DoubleVariable variable) {
+        return a.getDifferentialInfo(variable);
+    }
+
+    /* sqrt(f(x))' = f(x)'* 0.5/sqrt(f(x)) */
+    @Override
+    protected DoubleVariable getDifferentialInternal(DoubleVariable variable, CompilationContext compilationCtx) {
+        return a.getDifferential(variable, compilationCtx).times(DoubleVariable.doubleVariable(0.5).divide(output));
     }
 
     /* Factory methods for construction */

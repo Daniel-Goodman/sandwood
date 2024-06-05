@@ -334,13 +334,13 @@ public final class VariableNames {
         return new ScratchVariableDescription<>(varDesc + Name.prefix + "global", type, true);
     }
 
-    public static <V extends Variable<V>> LocalVariableDescription<V> lambdaSubstitute(VariableDescription<V> desc,
+    public static <A extends Variable<A>> LocalVariableDescription<A> lambdaSubstitute(VariableDescription<A> desc,
             int id) {
         return new LocalVariableDescription<>(desc + Name.prefix + id, desc.type, true);
     }
 
-    public static <V extends Variable<V>> LocalVariableDescription<V> scopedCopySubstitute(Variable<V> v, int id) {
-        VariableDescription<V> desc = v.getUniqueVarDesc();
+    public static <A extends Variable<A>> LocalVariableDescription<A> scopedCopySubstitute(Variable<A> v, int id) {
+        VariableDescription<A> desc = v.getUniqueVarDesc();
         return new LocalVariableDescription<>("sc" + Name.prefix + desc + Name.prefix + id, desc.type, true);
     }
 
@@ -363,5 +363,19 @@ public final class VariableNames {
 
     public static <A extends Variable<A>> GlobalVariableDescription<A> makeGlobal(VariableDescription<A> varDesc) {
         return new GlobalVariableDescription<A>(varDesc.name, varDesc.type);
+    }
+
+    private static final String differential = "diff";
+
+    public static <A extends Variable<A>> VariableDescription<A> differentialName(Variable<A> base,
+            DoubleVariable variable) {
+        if(base.getType().isArray() && !((ArrayVariable<?>) base).isSubArray())
+            return new GlobalVariableDescription<>(
+                    differential + Name.prefix + base.getVarDesc().name + Name.prefix + variable.getVarDesc().name,
+                    base.getType(), true);
+        else
+            return new LocalVariableDescription<>(
+                    differential + Name.prefix + base.getVarDesc().name + Name.prefix + variable.getVarDesc().name,
+                    base.getType(), true);
     }
 }

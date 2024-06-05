@@ -1,7 +1,7 @@
 /*
  * Sandwood
  *
- * Copyright (c) 2019-2025, Oracle and/or its affiliates
+ * Copyright (c) 2019-2026, Oracle and/or its affiliates
  *
  * Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl/
  */
@@ -19,6 +19,7 @@ import java.util.Map;
 
 import org.sandwood.compiler.compilation.CompilationContext;
 import org.sandwood.compiler.compilation.scopesState.ScopeTracking;
+import org.sandwood.compiler.dataflowGraph.autoDiff.DifferentialInfo;
 import org.sandwood.compiler.dataflowGraph.scopes.Scope;
 import org.sandwood.compiler.dataflowGraph.tasks.DFType;
 import org.sandwood.compiler.dataflowGraph.tasks.DataflowTask;
@@ -26,6 +27,7 @@ import org.sandwood.compiler.dataflowGraph.variables.LocalVariableDescription;
 import org.sandwood.compiler.dataflowGraph.variables.Variable;
 import org.sandwood.compiler.dataflowGraph.variables.VariableType;
 import org.sandwood.compiler.dataflowGraph.variables.scalarVariables.BooleanVariable;
+import org.sandwood.compiler.dataflowGraph.variables.scalarVariables.DoubleVariable;
 import org.sandwood.compiler.dataflowGraph.variables.scalarVariables.IntVariable;
 import org.sandwood.compiler.exceptions.CompilerException;
 import org.sandwood.compiler.exceptions.SandwoodModelException;
@@ -180,7 +182,8 @@ public class ForTask extends ScopedNumberProducingDataflowTask<IntVariable> {
         IRTreeReturn<IntVariable> startTree = start.getForwardIR(compilationCtx);
         IRTreeReturn<IntVariable> endTree = end.getForwardIR(compilationCtx);
         IRTreeReturn<IntVariable> stepTree = step.getForwardIR(compilationCtx);
-        LocalVariableDescription<IntVariable> indexDesc = (LocalVariableDescription<IntVariable>)index.getUniqueVarDesc();
+        LocalVariableDescription<IntVariable> indexDesc = (LocalVariableDescription<IntVariable>) index
+                .getUniqueVarDesc();
         if(reverseScopes) {
             // End must be updated first as it depends on the current start value.
             endTree = updateEnd(startTree, endTree, stepTree, incrementing);
@@ -288,5 +291,18 @@ public class ForTask extends ScopedNumberProducingDataflowTask<IntVariable> {
             return getStart().getMin(compilationCtx);
         else
             return getEnd().getMin(compilationCtx);
+    }
+
+    @Override
+    public DoubleVariable getDifferential(DoubleVariable variable, CompilationContext compilationCtx) {
+        return Variable.doubleVariable(0.0);
+    }
+
+    @Override
+    public DifferentialInfo getDifferentialInfo(DoubleVariable variable) {
+        boolean containsVariable = containsVariable(variable);
+        boolean isDifferentiable = !containsVariable;
+
+        return new DifferentialInfo(isDifferentiable, containsVariable);
     }
 }

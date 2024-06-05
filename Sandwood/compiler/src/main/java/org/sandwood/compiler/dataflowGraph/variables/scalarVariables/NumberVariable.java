@@ -1,7 +1,7 @@
 /*
  * Sandwood
  *
- * Copyright (c) 2019-2024, Oracle and/or its affiliates
+ * Copyright (c) 2019-2026, Oracle and/or its affiliates
  *
  * Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl/
  */
@@ -10,6 +10,7 @@ package org.sandwood.compiler.dataflowGraph.variables.scalarVariables;
 
 import org.sandwood.compiler.compilation.CompilationContext;
 import org.sandwood.compiler.dataflowGraph.NumberProperties;
+import org.sandwood.compiler.dataflowGraph.autoDiff.DifferentialInfo;
 import org.sandwood.compiler.dataflowGraph.tasks.NumberProducingDataflowTask;
 import org.sandwood.compiler.dataflowGraph.variables.VariableType.NumberType;
 import org.sandwood.compiler.trees.irTree.IRTreeReturn;
@@ -30,7 +31,7 @@ public abstract class NumberVariable<A extends NumberVariable<A>> extends Scalar
     @Override
     public NumberType<A> getType() {
         // TODO add generics so that these casts can be removed.
-        return (NumberType<A>)getParent().getOutputType();
+        return (NumberType<A>) getParent().getOutputType();
     }
 
     @Override
@@ -42,4 +43,37 @@ public abstract class NumberVariable<A extends NumberVariable<A>> extends Scalar
     public IRTreeReturn<A> getMin(CompilationContext compilationCtx) {
         return getParent().getMin(compilationCtx);
     }
+
+    @Override
+    public final boolean isDifferentiable(DoubleVariable variable) {
+        return getDifferentialInfo(variable).isDifferentiable();
+    }
+
+    @Override
+    public DifferentialInfo getDifferentialInfo(DoubleVariable variable) {
+        if(isFixed())
+            return new DifferentialInfo(true, containsVariable(variable));
+        else
+            return getDifferentialInfo(variable);
+    }
+
+    public abstract DoubleVariable add(DoubleVariable variable);
+
+    public abstract A add(IntVariable variable);
+
+    public abstract DoubleVariable subtract(DoubleVariable variable);
+
+    public abstract A subtract(IntVariable variable);
+
+    public abstract DoubleVariable times(DoubleVariable variable);
+
+    public abstract A times(IntVariable variable);
+
+    public abstract DoubleVariable divide(DoubleVariable variable);
+
+    public abstract A divide(IntVariable variable);
+
+    public abstract DoubleVariable remainder(DoubleVariable variable);
+
+    public abstract A remainder(IntVariable variable);
 }

@@ -1,0 +1,89 @@
+Initial Graph
+array[0] = (a * a);
+p1 = array[0];
+array[1] = (b * (b * b));
+p2 = array[1];
+array[2] = a;
+p3 = array[2];
+
+
+Constants
+
+
+Allocator
+
+// Constructor for array
+{
+	array = new double[3];
+}
+
+
+Differential Graph: 'p1' differentiated by 'b'
+diff$p1$b = 0.0
+
+Optimised
+diff$p1$b = 0.0
+
+Additional Constants
+
+
+Updated Allocator
+
+// Constructor for array
+{
+	array = new double[3];
+}
+
+
+Differential Graph: 'p2' differentiated by 'b'
+diff$array$b[1] = ((b * ((b * 1.0) + (b * 1.0))) + ((b * b) * 1.0));
+diff$p2$b = diff$array$b[1];
+
+
+Optimised
+diff$array$b[1] = ((b * (b + b)) + (b * b));
+diff$p2$b = diff$array$b[1];
+
+
+Additional Constants
+diff$array$b[0] = 0.0
+
+Updated Allocator
+// Constructor for array
+{
+	array = new double[3];
+}
+
+// Constructor for diff$array$b
+{
+	diff$array$b = new double[3];
+}
+
+
+Differential Graph: 'p3' differentiated by 'b'
+diff$array$b[0] = 0.0;
+diff$array$b[1] = ((b * ((b * 1.0) + (b * 1.0))) + ((b * b) * 1.0));
+diff$array$b[2] = 0.0;
+diff$p3$b = diff$array$b[2];
+
+
+Optimised
+diff$array$b[0] = 0.0;
+diff$array$b[1] = ((b * (b + b)) + (b * b));
+diff$array$b[2] = 0.0;
+diff$p3$b = diff$array$b[2];
+
+
+Additional Constants
+diff$array$b[0] = 0.0
+
+Updated Allocator
+// Constructor for array
+{
+	array = new double[3];
+}
+
+// Constructor for diff$array$b
+{
+	diff$array$b = new double[3];
+}

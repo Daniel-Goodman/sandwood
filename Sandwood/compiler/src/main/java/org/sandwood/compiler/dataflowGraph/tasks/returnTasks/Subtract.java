@@ -1,7 +1,7 @@
 /*
  * Sandwood
  *
- * Copyright (c) 2019-2024, Oracle and/or its affiliates
+ * Copyright (c) 2019-2026, Oracle and/or its affiliates
  *
  * Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl/
  */
@@ -9,6 +9,7 @@
 package org.sandwood.compiler.dataflowGraph.tasks.returnTasks;
 
 import org.sandwood.compiler.compilation.CompilationContext;
+import org.sandwood.compiler.dataflowGraph.autoDiff.DifferentialInfo;
 import org.sandwood.compiler.dataflowGraph.tasks.DFType;
 import org.sandwood.compiler.dataflowGraph.tasks.DataflowTask;
 import org.sandwood.compiler.dataflowGraph.tasks.NumberProducingDataflowTaskImplementation;
@@ -53,6 +54,24 @@ public abstract class Subtract<A extends NumberVariable<A>, B extends NumberVari
             return false;
         Subtract<?, ?, ?> dft = (Subtract<?, ?, ?>) other;
         return left.equivalent(dft.left) && right.equivalent(dft.right);
+    }
+
+    @Override
+    protected DoubleVariable getDifferentialInternal(DoubleVariable variable, CompilationContext compilationCtx) {
+        DoubleVariable leftDifferential = left.getDifferential(variable, compilationCtx);
+        DoubleVariable rightDifferential = right.getDifferential(variable, compilationCtx);
+        return leftDifferential.subtract(rightDifferential);
+    }
+
+    @Override
+    public DifferentialInfo getDifferentialInfo(DoubleVariable variable) {
+        DifferentialInfo leftInfo = left.getDifferentialInfo(variable);
+        DifferentialInfo rightInfo = right.getDifferentialInfo(variable);
+
+        // Note: we need both left and right to be differentiable,
+        // in case that any from left and right contains the differentiation variable.
+        return new DifferentialInfo(leftInfo.isDifferentiable() && rightInfo.isDifferentiable(),
+                leftInfo.containsVariable() || rightInfo.containsVariable());
     }
 
     private static class SubtractDD extends Subtract<DoubleVariable, DoubleVariable, DoubleVariable> {
@@ -187,8 +206,7 @@ public abstract class Subtract<A extends NumberVariable<A>, B extends NumberVari
         }
 
         @Override
-        public IRBinOp<IntVariable, IntVariable, IntVariable> getForwardIRinternal(
-                CompilationContext compilationCtx) {
+        public IRBinOp<IntVariable, IntVariable, IntVariable> getForwardIRinternal(CompilationContext compilationCtx) {
             return IRTree.subtractII(left.getForwardIR(compilationCtx), right.getForwardIR(compilationCtx));
         }
 

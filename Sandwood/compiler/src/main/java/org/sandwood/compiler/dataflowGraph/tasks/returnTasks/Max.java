@@ -9,6 +9,7 @@
 package org.sandwood.compiler.dataflowGraph.tasks.returnTasks;
 
 import org.sandwood.compiler.compilation.CompilationContext;
+import org.sandwood.compiler.dataflowGraph.autoDiff.DifferentialInfo;
 import org.sandwood.compiler.dataflowGraph.tasks.DFType;
 import org.sandwood.compiler.dataflowGraph.tasks.DataflowTask;
 import org.sandwood.compiler.dataflowGraph.tasks.NumberProducingDataflowTask;
@@ -76,6 +77,22 @@ public class Max<A extends NumberVariable<A>> extends NumberProducingDataflowTas
         return IRTree.max(a.getMin(compilationCtx), b.getMin(compilationCtx));
     }
 
+    @Override
+    protected DoubleVariable getDifferentialInternal(DoubleVariable variable, CompilationContext compilationCtx) {
+        return DoubleVariable.doubleVariable(0.0);
+    }
+
+    @Override
+    public DifferentialInfo getDifferentialInfo(DoubleVariable variable) {
+        boolean containsVariable = containsVariable(variable);
+
+        /*
+         * Continuity is broken in the case where left != right. Differentiable only if the variable is not contained in
+         * left or right.
+         */
+        return new DifferentialInfo(!containsVariable, containsVariable);
+    }
+
     /* Factory methods for construction */
 
     public static DoubleVariable max(DoubleVariable a, double b) {
@@ -135,8 +152,7 @@ public class Max<A extends NumberVariable<A>> extends NumberProducingDataflowTas
             return (A) DoubleVariable
                     .doubleVariable((NumberProducingDataflowTask<DoubleVariable>) new Max<A>(a, b, location));
         else if(a.getType() == VariableType.IntVariable)
-            return (A) DoubleVariable
-                    .doubleVariable((NumberProducingDataflowTask<DoubleVariable>) new Max<A>(a, b, location));
+            return (A) IntVariable.intVariable((NumberProducingDataflowTask<IntVariable>) new Max<A>(a, b, location));
         else
             throw new CompilerException("Unexpected number type " + a.getType());
     }

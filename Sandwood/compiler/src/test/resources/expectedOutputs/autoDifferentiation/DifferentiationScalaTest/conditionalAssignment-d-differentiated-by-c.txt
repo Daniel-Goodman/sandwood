@@ -1,0 +1,35 @@
+Initial Graph
+if(guard)
+	d = a;
+else
+	d = (a - (b * c));
+
+
+Constants
+
+
+Allocator
+
+
+Differential Graph: 'd' differentiated by 'c'
+double diff$d$c$var32;
+if(guard)
+	diff$d$c$var32 = 0.0;
+else
+	diff$d$c$var32 = (0.0 - ((b * 1.0) + (c * 0.0)));
+diff$d$c = diff$d$c$var32;
+
+
+Optimised
+double diff$d$c$var32;
+if(guard)
+	diff$d$c$var32 = 0.0;
+else
+	diff$d$c$var32 = (-b);
+diff$d$c = diff$d$c$var32;
+
+
+Additional Constants
+
+
+Updated Allocator

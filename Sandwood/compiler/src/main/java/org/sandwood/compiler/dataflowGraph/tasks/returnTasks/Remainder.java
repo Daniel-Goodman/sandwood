@@ -1,7 +1,7 @@
 /*
  * Sandwood
  *
- * Copyright (c) 2019-2024, Oracle and/or its affiliates
+ * Copyright (c) 2019-2026, Oracle and/or its affiliates
  *
  * Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl/
  */
@@ -19,6 +19,7 @@ import static org.sandwood.compiler.trees.irTree.IRTree.negate;
 import static org.sandwood.compiler.trees.irTree.IRTree.subtractII;
 
 import org.sandwood.compiler.compilation.CompilationContext;
+import org.sandwood.compiler.dataflowGraph.autoDiff.DifferentialInfo;
 import org.sandwood.compiler.dataflowGraph.tasks.DFType;
 import org.sandwood.compiler.dataflowGraph.tasks.DataflowTask;
 import org.sandwood.compiler.dataflowGraph.tasks.NumberProducingDataflowTaskImplementation;
@@ -62,6 +63,22 @@ public abstract class Remainder<A extends NumberVariable<A>, B extends NumberVar
             return false;
         Remainder<?, ?, ?> dft = (Remainder<?, ?, ?>) other;
         return left.equivalent(dft.left) && right.equivalent(dft.right);
+    }
+
+    @Override
+    protected DoubleVariable getDifferentialInternal(DoubleVariable variable, CompilationContext compiationCtx) {
+        return DoubleVariable.doubleVariable(0.0);
+    }
+
+    @Override
+    public DifferentialInfo getDifferentialInfo(DoubleVariable variable) {
+        boolean containsVariable = containsVariable(variable);
+
+        /*
+         * There is discontinuity in remainder for cases where a multiple of right is reached by the left. It is
+         * differentiable only when the variable differentiating upon is not contained to either left or right.
+         */
+        return new DifferentialInfo(!containsVariable, containsVariable);
     }
 
     private static class RemainderDD extends Remainder<DoubleVariable, DoubleVariable, DoubleVariable> {
@@ -180,8 +197,7 @@ public abstract class Remainder<A extends NumberVariable<A>, B extends NumberVar
         }
 
         @Override
-        public IRBinOp<IntVariable, IntVariable, IntVariable> getForwardIRinternal(
-                CompilationContext compilationCtx) {
+        public IRBinOp<IntVariable, IntVariable, IntVariable> getForwardIRinternal(CompilationContext compilationCtx) {
             return IRTree.remainderII(left.getForwardIR(compilationCtx), right.getForwardIR(compilationCtx));
         }
 

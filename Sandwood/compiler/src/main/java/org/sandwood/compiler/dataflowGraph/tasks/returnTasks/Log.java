@@ -9,6 +9,7 @@
 package org.sandwood.compiler.dataflowGraph.tasks.returnTasks;
 
 import org.sandwood.compiler.compilation.CompilationContext;
+import org.sandwood.compiler.dataflowGraph.autoDiff.DifferentialInfo;
 import org.sandwood.compiler.dataflowGraph.tasks.DFType;
 import org.sandwood.compiler.dataflowGraph.tasks.DataflowTask;
 import org.sandwood.compiler.dataflowGraph.tasks.NumberProducingDataflowTaskImplementation;
@@ -44,8 +45,7 @@ public class Log<A extends NumberVariable<A>> extends NumberProducingDataflowTas
     }
 
     @Override
-    public IRTreeReturn<DoubleVariable> getForwardIRinternal(
-            CompilationContext compilationCtx) {
+    public IRTreeReturn<DoubleVariable> getForwardIRinternal(CompilationContext compilationCtx) {
         return IRTree.log(input.getForwardIR(compilationCtx));
     }
 
@@ -80,5 +80,21 @@ public class Log<A extends NumberVariable<A>> extends NumberProducingDataflowTas
     @Override
     public IRTreeReturn<DoubleVariable> getMin(CompilationContext compilationCtx) {
         return IRTree.log(input.getMin(compilationCtx));
+    }
+
+    @Override
+    protected DoubleVariable getDifferentialInternal(DoubleVariable variable, CompilationContext compilationCtx) {
+        // (log(f(x)))' = f'(x)/f(x).
+        // Note: If we change Log to utilize a different base "b" than 10, we need to calculate
+        // differential based on the formula (logb(f(x)))' = f'(x)/(log(b)*f(x)).
+        return input.getDifferential(variable, compilationCtx).divide((DoubleVariable) input);
+    }
+
+    @Override
+    public DifferentialInfo getDifferentialInfo(DoubleVariable variable) {
+        // NOTE: We are aware that this will return true for the case
+        // that the input is a 0, but the differential will essentially
+        // fail upon execution, due to divide-by-zero error.
+        return input.getDifferentialInfo(variable);
     }
 }

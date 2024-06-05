@@ -1,7 +1,7 @@
 /*
  * Sandwood
  *
- * Copyright (c) 2019-2025, Oracle and/or its affiliates
+ * Copyright (c) 2019-2026, Oracle and/or its affiliates
  *
  * Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl/
  */
@@ -239,17 +239,17 @@ public abstract class RandomVariableImplementation<A extends Variable<A>, B exte
     @Override
     public B copy() {
         throw new SandwoodModelException("unable to assign random variable " + getAlias()
-        + " to another reference as random variables are reference types and currently"
-        + " only value types can be assigned to multiple variables.");
+                + " to another reference as random variables are reference types and currently"
+                + " only value types can be assigned to multiple variables.");
     }
 
     @Override
     public B copy(Location location) {
         throw new SandwoodModelException("unable to assign random variable " + getAlias()
-        + " to another reference as random variables are reference types and currently"
-        + " only value types can be assigned to multiple variables.", location);
+                + " to another reference as random variables are reference types and currently"
+                + " only value types can be assigned to multiple variables.", location);
     }
-    
+
     @Override
     public void constructTrace(DAGInfo dagInfo) {
         dagInfo.addRandomVariable(this);

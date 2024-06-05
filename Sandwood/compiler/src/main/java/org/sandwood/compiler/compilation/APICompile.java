@@ -279,7 +279,7 @@ public class APICompile {
             ScopeStack.popScope(rv.scope());
 
             rv.addProbabilityDistribution(v);
-            compilationCtx.addConstructedClassField(v, compilationCtx);
+            compilationCtx.addConstructedClassField(v);
         }
 
         // Intermediates and sample variables
@@ -287,7 +287,7 @@ public class APICompile {
             boolean isSubArray = v.getType().isArray() && ((ArrayVariable<?>) v).isSubArray();
             boolean isModelInput = v.getParent().getType() == DFType.CONSTRUCT_INPUT;
             if((v.isIntermediate() || (v.isSample() && !isSubArray)) && !isModelInput) {
-                compilationCtx.addConstructedClassField(v, compilationCtx);
+                compilationCtx.addConstructedClassField(v);
             }
         }
 

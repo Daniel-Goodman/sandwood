@@ -1,7 +1,7 @@
 /*
  * Sandwood
  *
- * Copyright (c) 2019-2023, Oracle and/or its affiliates
+ * Copyright (c) 2019-2026, Oracle and/or its affiliates
  * 
  * Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl/
  */
@@ -9,9 +9,11 @@
 package org.sandwood.compiler.dataflowGraph.tasks.sandwoodOperators;
 
 import org.sandwood.compiler.compilation.CompilationContext;
+import org.sandwood.compiler.dataflowGraph.autoDiff.DifferentialInfo;
 import org.sandwood.compiler.dataflowGraph.scopes.IfScope;
 import org.sandwood.compiler.dataflowGraph.tasks.NumberProducingDataflowTask;
 import org.sandwood.compiler.dataflowGraph.variables.scalarVariables.BooleanVariable;
+import org.sandwood.compiler.dataflowGraph.variables.scalarVariables.DoubleVariable;
 import org.sandwood.compiler.dataflowGraph.variables.scalarVariables.NumberVariable;
 import org.sandwood.compiler.srcTools.sourceToSource.Location;
 import org.sandwood.compiler.trees.irTree.IRTree;
@@ -20,7 +22,8 @@ import org.sandwood.compiler.trees.irTree.IRTreeReturn;
 public class IfElseNumberAssignmentTask<A extends NumberVariable<A>> extends IfElseAssignmentTask<A>
         implements NumberProducingDataflowTask<A> {
 
-    public IfElseNumberAssignmentTask(BooleanVariable guard, A ifValue, A elseValue, IfScope ifScope, Location location) {
+    public IfElseNumberAssignmentTask(BooleanVariable guard, A ifValue, A elseValue, IfScope ifScope,
+            Location location) {
         super(guard, ifValue, elseValue, ifScope, location);
     }
 
@@ -32,5 +35,29 @@ public class IfElseNumberAssignmentTask<A extends NumberVariable<A>> extends IfE
     @Override
     public IRTreeReturn<A> getMin(CompilationContext compilationCtx) {
         return IRTree.min(ifValue.getMin(compilationCtx), elseValue.getMin(compilationCtx));
+    }
+
+    @Override
+    public DoubleVariable getDifferential(DoubleVariable variable, CompilationContext compilationCtx) {
+        DoubleVariable ifValueDifferential = ifValue.getDifferential(variable, compilationCtx);
+        DoubleVariable elseValueDifferential = elseValue.getDifferential(variable, compilationCtx);
+        
+        IfElseNumberAssignmentTask<DoubleVariable> ifElseDifferentialTask = new IfElseNumberAssignmentTask<DoubleVariable>(
+                guard, ifValueDifferential, elseValueDifferential, ifScope, null);
+        return DoubleVariable.doubleVariable(ifElseDifferentialTask);
+    }
+
+    @Override
+    public boolean isDifferentiable(DoubleVariable variable) {
+        return getDifferentialInfo(variable).isDifferentiable();
+    }
+
+    @Override
+    public DifferentialInfo getDifferentialInfo(DoubleVariable variable) {
+        boolean containsVariable = containsVariable(variable);
+        boolean isDifferentiable = (!guard.containsVariable(variable)
+                && (ifValue.isDifferentiable(variable) && elseValue.isDifferentiable(variable)));
+
+        return new DifferentialInfo(isDifferentiable, containsVariable);
     }
 }

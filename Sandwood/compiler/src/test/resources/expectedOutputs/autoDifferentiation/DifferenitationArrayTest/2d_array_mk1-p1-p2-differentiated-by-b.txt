@@ -1,0 +1,72 @@
+Initial Graph
+double[] inner0 = array[0];
+inner0[0] = (a * a);
+p1 = array[0][0];
+double[] inner1 = array[1];
+inner1[0] = (b * (b * b));
+p2 = array[1][0];
+
+
+Constants
+
+
+Allocator
+
+// Constructor for array
+{
+	array = new double[2][];
+	array[0] = new double[1];
+	array[1] = new double[1];
+}
+
+
+Differential Graph: 'p1' differentiated by 'b'
+diff$p1$b = 0.0
+
+Optimised
+diff$p1$b = 0.0
+
+Additional Constants
+
+
+Updated Allocator
+
+// Constructor for array
+{
+	array = new double[2][];
+	array[0] = new double[1];
+	array[1] = new double[1];
+}
+
+
+Differential Graph: 'p2' differentiated by 'b'
+double[] diff$inner1$b = diff$array$b[1];
+diff$inner1$b[0] = ((b * ((b * 1.0) + (b * 1.0))) + ((b * b) * 1.0));
+diff$p2$b = diff$array$b[1][0];
+
+
+Optimised
+// Substituted "diff$inner1$b" with its value "diff$array$b[1]".
+diff$array$b[1][0] = ((b * (b + b)) + (b * b));
+diff$p2$b = diff$array$b[1][0];
+
+
+Additional Constants
+double[] diff$inner0$b = diff$array$b[0];
+diff$inner0$b[0] = 0.0;
+
+
+Updated Allocator
+// Constructor for array
+{
+	array = new double[2][];
+	array[0] = new double[1];
+	array[1] = new double[1];
+}
+
+// Constructor for diff$array$b
+{
+	diff$array$b = new double[2][];
+	diff$array$b[0] = new double[1];
+	diff$array$b[1] = new double[1];
+}

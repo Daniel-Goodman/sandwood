@@ -1,7 +1,7 @@
 /*
  * Sandwood
  *
- * Copyright (c) 2019-2025, Oracle and/or its affiliates
+ * Copyright (c) 2019-2026, Oracle and/or its affiliates
  *
  * Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl/
  */
@@ -354,7 +354,7 @@ public interface Variable<A extends Variable<A>> extends Comparable<Variable<?>>
      * Method to test if the variable is fixed by observations.
      */
     boolean isFixed();
-    
+
     /**
      * Method to get the observation status of a variable.
      * 
@@ -386,6 +386,10 @@ public interface Variable<A extends Variable<A>> extends Comparable<Variable<?>>
     void setNonDeterministic();
 
     boolean isDeterministic();
+
+    boolean containsVariable(Variable<?> variable);
+
+    boolean containsVariable(Variable<?> variable, Set<Variable<?>> seen);
 
     /*
      * Arrays: Convenience methods that pass the call through to the factory in the relevant object.

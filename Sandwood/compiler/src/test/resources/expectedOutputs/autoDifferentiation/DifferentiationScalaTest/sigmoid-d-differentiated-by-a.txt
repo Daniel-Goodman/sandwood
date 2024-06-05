@@ -1,0 +1,19 @@
+Initial Graph
+d = (1.0 / (1 + Math.exp((-a))))
+
+Constants
+
+
+Allocator
+
+
+Differential Graph: 'd' differentiated by 'a'
+diff$d$a = ((1.0 * d) * (1.0 - d))
+
+Optimised
+diff$d$a = (d * (1.0 - d))
+
+Additional Constants
+
+
+Updated Allocator

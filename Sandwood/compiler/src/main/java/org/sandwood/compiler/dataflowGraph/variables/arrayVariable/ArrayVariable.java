@@ -8,9 +8,10 @@
 
 package org.sandwood.compiler.dataflowGraph.variables.arrayVariable;
 
-import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
-import java.util.Map;
+import java.util.List;
 import java.util.Set;
 
 import org.sandwood.common.exceptions.SandwoodException;
@@ -49,11 +50,13 @@ import org.sandwood.compiler.dataflowGraph.variables.VariableType.NumberType;
 import org.sandwood.compiler.dataflowGraph.variables.VariableType.Type;
 import org.sandwood.compiler.dataflowGraph.variables.auxillary.VariableWrapper;
 import org.sandwood.compiler.dataflowGraph.variables.scalarVariables.BooleanVariable;
+import org.sandwood.compiler.dataflowGraph.variables.scalarVariables.DoubleVariable;
 import org.sandwood.compiler.dataflowGraph.variables.scalarVariables.IntVariable;
 import org.sandwood.compiler.dataflowGraph.variables.scalarVariables.NumberVariable;
 import org.sandwood.compiler.exceptions.CompilerException;
 import org.sandwood.compiler.exceptions.ConstraintAlreadySetException;
 import org.sandwood.compiler.exceptions.SandwoodModelException;
+import org.sandwood.compiler.names.VariableNames;
 import org.sandwood.compiler.srcTools.sourceToSource.Location;
 import org.sandwood.compiler.trees.irTree.IRTree;
 import org.sandwood.compiler.trees.irTree.IRTreeReturn;
@@ -493,85 +496,80 @@ public class ArrayVariable<A extends Variable<A>> extends VariableImplementation
      * @return
      */
     public Set<ArrayVariable<A>> getPossibleInstances(Scope consumerScope, int destinationID) {
-        Map<IfScope, ElseScope> conditionalScopes = new HashMap<>();
+        // Get the scopes holding the consumer, and record any alternative branches that can only have values in them
+        // included if an outer scope is iterating.
+        Set<Scope> conditionalScopes = new HashSet<>();
+        Set<Scope> consumerScopes = new HashSet<>();
         {
             Scope s = consumerScope;
             while(s != GlobalScope.scope) {
-                if(s.getScopeType() == ScopeType.ELSE) {
-                    ElseScope e = (ElseScope) s;
-                    conditionalScopes.put(e.ifScope, e);
-                }
+                consumerScopes.add(s);
+                ScopeType t = s.getScopeType();
+                if(t == ScopeType.IF)
+                    conditionalScopes.add(((IfScope) s).elseScope);
+                else if(t == ScopeType.ELSE)
+                    conditionalScopes.add(((ElseScope) s).ifScope);
                 s = s.getEnclosingScope();
             }
+            consumerScopes.add(s);
         }
 
+        // Construct a set to hold the results
         Set<ArrayVariable<A>> vars = new HashSet<>();
 
         // Get any puts that happen after the scope, but could reach it. This goes beyond
         // the arrays returned by possible instances because puts applied to the value
         // of puts could be present.
         ArrayVariable<A> vec = instanceHandle;
-        while(vec != null) {
-            if(vec.getParent().id() < destinationID) {
-                Scope s = vec.scope();
-                boolean iterating = false;
-                boolean inScope = true;
-                ElseScope lastElse = null;
-                while(s != GlobalScope.scope) {
-                    switch(s.getScopeType()) {
-                        case ELSE:
-                            lastElse = (ElseScope) s;
-                            break;
-                        case FOR:
-                            iterating = true;
-                            break;
-                        case IF:
-                            ElseScope e = conditionalScopes.get(s);
-                            if(e != null)
-                                inScope = inScope && e == lastElse;
-                            break;
-                        default:
-                            break;
-                    }
+        while(vec != null && vec.getParent().id() < destinationID) {
+            Scope s = vec.getParent().scope();
+            // Skip any scopes that the consumer does not share
+            boolean differentBranch = false;
+            while(!consumerScopes.contains(s)) {
+                differentBranch = differentBranch || conditionalScopes.contains(s);
+                s = s.getEnclosingScope();
+            }
 
+            if(differentBranch) {
+                while(s != GlobalScope.scope) {
+                    if(s.getScopeType() == ScopeType.FOR) {
+                        vars.add(vec);
+                        break;
+                    }
                     s = s.getEnclosingScope();
                 }
-
-                if(iterating || inScope)
-                    vars.add(vec);
-                vec = vec.childInstance;
             } else
-                break;
+                vars.add(vec);
+            vec = vec.childInstance;
         }
 
         if(vec != null)
-            vec.tryChildInstances(consumerScope, vars);
+            tryChildInstances(vec, consumerScopes, vars);
         return vars;
     }
 
-    private void tryChildInstances(Scope consumerScope, Set<ArrayVariable<A>> vars) {
-        // Work out if the operations occur in compatible scopes.
-        Scope varScope = getParent().scope();
-        Set<Scope> knownScopes = new HashSet<>();
-        while(varScope != null) {
-            knownScopes.add(varScope);
-            varScope = varScope.getEnclosingScope();
-        }
+    private static <A extends Variable<A>> void tryChildInstances(ArrayVariable<A> vec, Set<Scope> consumerScopes,
+            Set<ArrayVariable<A>> vars) {
+        while(vec != null) {
+            // Work out if the operations occur in compatible scopes.
+            Scope varScope = vec.getParent().scope();
 
-        Scope s = consumerScope;
-        while(s != null && !knownScopes.contains(s))
-            s = s.getEnclosingScope();
+            // Skip any scopes that the consumer does not share
+            while(!consumerScopes.contains(varScope))
+                varScope = varScope.getEnclosingScope();
 
-        while(s != null) {
-            if(s.iterating()) {
-                vars.add(this);
-
-                // If they do try the next child.
-                if(childInstance != null)
-                    childInstance.tryChildInstances(consumerScope, vars);
-                return;
+            while(varScope != GlobalScope.scope) {
+                if(varScope.iterating()) {
+                    vars.add(vec);
+                    break;
+                }
+                varScope = varScope.getEnclosingScope();
             }
-            s = s.getEnclosingScope();
+            if(vars.contains(vec))
+                vec = vec.childInstance;
+            else
+                // If the current vector was not added no future values can be either.
+                return;
         }
     }
 
@@ -812,11 +810,224 @@ public class ArrayVariable<A extends Variable<A>> extends VariableImplementation
         return outerArrayDesc;
     }
 
-    @Override
-    public void setAlias(VariableDescription<ArrayVariable<A>> alias) {
-        super.setAlias(alias);
-        if(childInstance != null)
-            childInstance.setAlias(alias);
+    /**
+     * Check if Array is differentiable. In order for an array to be differentiable, its values must be differentiable.
+     * 
+     * @param variable the variable checking if its differentiable upon.
+     * @return if the array is differentiable.
+     */
+    public boolean isDifferentiable(DoubleVariable variable) {
+        // Iterate puts and check if values are differentiable.
+        Set<PutTask<A>> puts = getPuts(scope(), getCurrentInstance().getParent().id());
+        for(PutTask<A> put:puts) {
+            // If an array, call recursively.
+            if(put.value.getType().isArray()) {
+                if(!((ArrayVariable<?>) put.value).isDifferentiable(variable)) {
+                    return false;
+                }
+            } else if(put.value instanceof NumberVariable) {
+                // Else, invoke check on differentiable value.
+                if(!((NumberVariable<?>) put.value).isDifferentiable(variable))
+                    return false;
+            } else
+                return false;
+        }
+        return true;
+    }
+
+    public ArrayVariable<A> getDifferential(DoubleVariable variable, CompilationContext compilationCtx) {
+        ArrayProducingDataflowTask<A> currentParent = getCurrentInstance().getParent();
+        return getCurrentInstance().getDifferential(variable, currentParent.scope(), currentParent.id(),
+                compilationCtx);
+    }
+
+    public ArrayVariable<A> getDifferential(DoubleVariable variable, Scope endScope, int endId,
+            CompilationContext compilationCtx) {
+        ArrayVariable<A> diffArray = compilationCtx.getDifferential(this, variable);
+
+        if(diffArray == null) {
+            // plus 1 so that this arrays parent is also included.
+            List<PutTask<A>> puts = new ArrayList<>(getPuts(endScope, endId));
+            Collections.sort(puts);
+
+            if(getElementType() == VariableType.DoubleVariable) {
+                // If the values being put in are the inner most doubles generate them
+                for(PutTask<A> put:puts) {
+                    // Check if the output of the put has already been created.
+                    diffArray = compilationCtx.getDifferential(put.getOutput(), variable);
+                    if(diffArray == null) {
+                        // If it hasn't see if the array it takes as input has been created.
+                        diffArray = compilationCtx.getDifferential(put.array, variable);
+                        if(diffArray == null)
+                            diffArray = constructDiffArray(put.array, variable, compilationCtx);
+
+                        // Then add this put to update the array
+                        DoubleVariable diffValue;
+                        if(put.value.containsVariable(variable))
+                            diffValue = ((DoubleVariable) put.value).getDifferential(variable, compilationCtx);
+                        else
+                            diffValue = DoubleVariable.doubleVariable(0);
+                        ScopeStack.pushScope(put.scope());
+                        diffArray.put(put.index, diffValue);
+                        ScopeStack.popScope(put.scope());
+
+                        recordDiffPuts(put.getOutput(), diffArray.getCurrentInstance(), variable, compilationCtx);
+                    }
+                }
+            } else {
+                // Otherwise look for the last possible put in the inner array and recursively call on that
+                PutTask<A> put = puts.getLast();
+                ArrayVariable<?> putValue = (ArrayVariable<?>) put.value;
+                putValue.getDifferential(variable, endScope, endId, compilationCtx);
+            }
+
+            diffArray = compilationCtx.getDifferential(this, variable);
+            if(diffArray == null)
+                diffArray = constructDiffArray(this, variable, compilationCtx);
+        }
+        return diffArray;
+    }
+
+    private static <B extends Variable<B>> void recordDiffPuts(ArrayVariable<B> baseArray, ArrayVariable<B> diffArray,
+            DoubleVariable variable, CompilationContext compilationCtx) {
+        compilationCtx.addDifferential(baseArray, variable, diffArray);
+        PutTask<ArrayVariable<B>> diffPut = getPut(diffArray);
+        // If the diff put is null then this is the outer array.
+        if(diffPut == null)
+            return;
+
+        PutTask<ArrayVariable<B>> basePut = getPut(baseArray);
+        ArrayVariable<ArrayVariable<B>> outerBaseArray = (basePut == null) ? baseArray.getOuterArrayDesc().array
+                : basePut.getOutput();
+        recordDiffPuts(outerBaseArray, diffPut.getOutput(), variable, compilationCtx);
+    }
+
+    private static <B extends Variable<B>> ArrayVariable<B> constructDiffArray(ArrayVariable<B> array,
+            DoubleVariable variable, CompilationContext compilationCtx) {
+        ArrayVariable<B> diffArray;
+        ProducingDataflowTask<ArrayVariable<B>> parent = array.getParent();
+        switch(parent.getType()) {
+            case ARRAY_CONSTRUCTOR: {
+                ArrayConstructTask<B> constructor = (ArrayConstructTask<B>) parent;
+                ScopeStack.pushScope(constructor.scope());
+                diffArray = ArrayVariable.getArrayVariable(array.getElementType(), constructor.length);
+                ScopeStack.popScope(constructor.scope());
+
+                setDiffArrayProperties(array, variable, diffArray, compilationCtx);
+
+                diffArray.setAlias(VariableNames.differentialName(array, variable));
+                diffArray.setUniqueVarDesc(diffArray.getVarDesc());
+                diffArray.setPrivate();
+                break;
+            }
+            case CONSTRUCT_INPUT: {
+                ScopeStack.pushScope(parent.scope());
+                diffArray = ArrayVariable.getArrayVariable(array.getElementType(), array.length());
+                ScopeStack.popScope(parent.scope());
+
+                diffArray.setAlias(VariableNames.differentialName(array, variable));
+                diffArray.setUniqueVarDesc(diffArray.getVarDesc());
+                diffArray.setPrivate();
+                break;
+            }
+            case GET: {
+                GetTask<ArrayVariable<B>> getTask = (GetTask<ArrayVariable<B>>) parent;
+                ArrayVariable<ArrayVariable<B>> outerArray = getTask.array;
+                ArrayVariable<ArrayVariable<B>> outerDiffArray = compilationCtx.getDifferential(outerArray, variable);
+                if(outerDiffArray == null)
+                    outerDiffArray = constructDiffArray(outerArray, variable, compilationCtx);
+
+                ScopeStack.pushScope(getTask.scope());
+                diffArray = outerDiffArray.get(getTask.index);
+                ScopeStack.popScope(getTask.scope());
+
+                diffArray.setAlias(VariableNames.differentialName(array, variable));
+                diffArray.setUniqueVarDesc(diffArray.getVarDesc());
+                break;
+            }
+            case PUT: {
+                PutTask<B> putTask = (PutTask<B>) parent;
+
+                if(!putTask.value.getType().isArray())
+                    throw new CompilerException("Encountered a scalar put value. This should not happen as the value "
+                            + "should have already been constructed by the get differential call.");
+
+                /*
+                 * Calculate the value, we know it is not already constructed otherwise the put would have been
+                 * constructed too as it will know about its outer array. It will add itself to the outer array, so this
+                 * will trigger the creation of the outer array for this put task
+                 */
+                constructDiffArray((ArrayVariable<?>) putTask.value, variable, compilationCtx);
+
+                diffArray = compilationCtx.getDifferential(array, variable);
+
+                setDiffArrayProperties(array, variable, diffArray, compilationCtx);
+                break;
+            }
+            default:
+                throw new CompilerException("Unexpected array construction type: " + parent.getType());
+        }
+
+        compilationCtx.addDifferential(array, variable, diffArray);
+        return diffArray.getCurrentInstance();
+    }
+
+    private static <B extends Variable<B>> void setDiffArrayProperties(ArrayVariable<B> array, DoubleVariable variable,
+            ArrayVariable<B> diffArray, CompilationContext compilationCtx) {
+        if(array.isSubArray()) {
+            OuterArrayDesc<B> outerArrayDesc = array.getOuterArrayDesc();
+
+            // Get the put task used to add this array to the outer array.
+            PutTask<ArrayVariable<B>> putTask = getPut(array);
+
+            // If there is no put task use the instance handle of the outer array, otherwise use the array input of the
+            // put for the array we are going to work with.
+            ArrayVariable<ArrayVariable<B>> outerArray = putTask == null ? outerArrayDesc.getArray().instanceHandle
+                    : putTask.array;
+
+            // Look up if an instance of this array has already been constructed.
+            ArrayVariable<ArrayVariable<B>> outerDiffArray = compilationCtx.getDifferential(outerArray, variable);
+
+            // If it has not construct it.
+            if(outerDiffArray == null)
+                outerDiffArray = constructDiffArray(outerArray, variable, compilationCtx);
+
+            // If the diff array has not already been put into the outer array somewhere put it in here.
+            if(!diffArray.isSubArray()) {
+                ScopeStack.pushScope(outerArrayDesc.getScope());
+                outerDiffArray.put(outerArrayDesc.getIndex(), diffArray);
+                ScopeStack.popScope(outerArrayDesc.getScope());
+            }
+
+            // Record the newly constructed array in the differential lookup
+            if(putTask == null)
+                compilationCtx.addDifferential(outerArray, variable, outerDiffArray.getCurrentInstance());
+            else
+                compilationCtx.addDifferential(putTask.getOutput(), variable, outerDiffArray.getCurrentInstance());
+        }
+    }
+
+    /**
+     * A method to find the put task that is used to add a the array to an outer array. This will either be the first
+     * explicit put, or the later implicit puts. If there is not a put it will return null.
+     * 
+     * @param <B>
+     * @param array The array to find the put operation it is the value for.
+     * @return
+     */
+    private static <B extends Variable<B>> PutTask<ArrayVariable<B>> getPut(ArrayVariable<B> array) {
+        if(array.isSubArray()) {
+            OuterArrayDesc<?> outerArrayDesc = array.getOuterArrayDesc();
+            ArrayVariable<?> outerArray = outerArrayDesc.getArray().instanceHandle();
+            for(DataflowTask<?> d:array.getConsumers()) {
+                if(d.getType() == DFType.PUT) {
+                    PutTask<ArrayVariable<B>> putTask = (PutTask<ArrayVariable<B>>) d;
+                    if(putTask.array.instanceHandle() == outerArray)
+                        return putTask;
+                }
+            }
+        }
+        return null;
     }
 
     // TODO this name may need repositioning so the name only becomes fixed once we know what the target language is.

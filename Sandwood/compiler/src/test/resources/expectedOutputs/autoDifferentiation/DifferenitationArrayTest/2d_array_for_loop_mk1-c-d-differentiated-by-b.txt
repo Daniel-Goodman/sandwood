@@ -1,0 +1,73 @@
+Initial Graph
+for(int i = 0; i < 10; i += 1) {
+	double[] var32 = array[i];
+	for(int j = 0; j < 10; j += 1)
+		var32[j] = (a * i);
+	c = array[i][0];
+}
+d = array[0][0];
+
+
+Constants
+
+
+Allocator
+// Constructor for array
+{
+	array = new double[10][];
+	for(int i = 0; i < 10; i += 1)
+		array[i] = new double[10];
+}
+
+// Constructor for c
+{
+	c = new double[((((10 - 1) - 0) / 1) + 1)];
+}
+
+
+Differential Graph: 'c' differentiated by 'b'
+for(int i = 0; i < 10; i += 1)
+	diff$c$b = 0.0;
+
+
+Optimised
+diff$c$b = 0.0
+
+Additional Constants
+
+
+Updated Allocator
+// Constructor for array
+{
+	array = new double[10][];
+	for(int i = 0; i < 10; i += 1)
+		array[i] = new double[10];
+}
+
+// Constructor for c
+{
+	c = new double[((((10 - 1) - 0) / 1) + 1)];
+}
+
+
+Differential Graph: 'd' differentiated by 'b'
+diff$d$b = 0.0
+
+Optimised
+diff$d$b = 0.0
+
+Additional Constants
+
+
+Updated Allocator
+// Constructor for array
+{
+	array = new double[10][];
+	for(int i = 0; i < 10; i += 1)
+		array[i] = new double[10];
+}
+
+// Constructor for c
+{
+	c = new double[((((10 - 1) - 0) / 1) + 1)];
+}

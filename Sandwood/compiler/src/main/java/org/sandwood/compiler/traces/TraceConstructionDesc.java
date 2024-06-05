@@ -1,7 +1,7 @@
 /*
  * Sandwood
  *
- * Copyright (c) 2019-2025, Oracle and/or its affiliates
+ * Copyright (c) 2019-2026, Oracle and/or its affiliates
  *
  * Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl/
  */
@@ -50,33 +50,35 @@ public class TraceConstructionDesc {
     }
 
     public void addRestrictedIndexes(PutTask<?> task) {
-        // Get the set of indexes to augment, constructing it if need be.
-        ArrayVariable<?> array = (ArrayVariable<?>) task.array.getSource().getOutput();
-        int depth = array.getType().getDepth() - task.array.getType().getDepth();
+        if(!task.value.getType().isArray() || task.isImplicit()) {
+            // Get the set of indexes to augment, constructing it if need be.
+            ArrayVariable<?> array = (ArrayVariable<?>) task.array.getSource().getOutput();
+            int depth = array.getType().getDepth() - task.array.getType().getDepth();
 
-        Map<Integer, Set<IntVariable>> m = restrictedIndexes.computeIfAbsent(array, k -> new HashMap<>());
+            Map<Integer, Set<IntVariable>> m = restrictedIndexes.computeIfAbsent(array, k -> new HashMap<>());
 
-        Set<IntVariable> indexes = m.computeIfAbsent(depth, k -> new HashSet<>());
+            Set<IntVariable> indexes = m.computeIfAbsent(depth, k -> new HashSet<>());
 
-        // Add all the indexes from the for scopes to the set.
-        Scope scope = task.scope();
-        Scope endScope = array.scope();
-        while(scope != endScope) {
-            switch(scope.getScopeType()) {
-                case FOR:
-                    ForTask ft = (ForTask) scope;
-                    indexes.add(ft.getIndex());
-                    break;
-                case BLOCK:
-                case COMMENT:
-                case ELSE:
-                case GLOBAL:
-                case IF:
-                case REDUCE:
-                default:
-                    break;
+            // Add all the indexes from the for scopes to the set.
+            Scope scope = task.scope();
+            Scope endScope = array.scope();
+            while(scope != endScope) {
+                switch(scope.getScopeType()) {
+                    case FOR:
+                        ForTask ft = (ForTask) scope;
+                        indexes.add(ft.getIndex());
+                        break;
+                    case BLOCK:
+                    case COMMENT:
+                    case ELSE:
+                    case GLOBAL:
+                    case IF:
+                    case REDUCE:
+                    default:
+                        break;
+                }
+                scope = scope.getEnclosingScope();
             }
-            scope = scope.getEnclosingScope();
         }
     }
 

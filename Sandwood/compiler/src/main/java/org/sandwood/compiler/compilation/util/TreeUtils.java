@@ -289,6 +289,8 @@ public class TreeUtils {
             VariableDescription<ArrayVariable<A>> name, ArrayDesc<A> desc, CompilationContext compilationCtx) {
         if(desc == null)
             return null;
+
+        compilationCtx.pushIsSerial(true);
         // Set up the scope tracking to record the tree we generate.
         compilationCtx.pushScopeState();
         Scope scope = desc.scope;
@@ -317,6 +319,7 @@ public class TreeUtils {
         // Restore the old scope
         compilationCtx.phase = currentPhase;
         compilationCtx.popScopeState();
+        compilationCtx.popIsSerial();
         return t;
     }
 

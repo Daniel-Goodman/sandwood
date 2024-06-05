@@ -1,7 +1,7 @@
 /*
  * Sandwood
  *
- * Copyright (c) 2019-2026, Oracle and/or its affiliates
+ * Copyexp (c) 2019-2026, Oracle and/or its affiliates
  *
  * Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl/
  */
@@ -9,6 +9,7 @@
 package org.sandwood.compiler.dataflowGraph.tasks.returnTasks;
 
 import org.sandwood.compiler.compilation.CompilationContext;
+import org.sandwood.compiler.dataflowGraph.autoDiff.DifferentialInfo;
 import org.sandwood.compiler.dataflowGraph.tasks.DFType;
 import org.sandwood.compiler.dataflowGraph.tasks.DataflowTask;
 import org.sandwood.compiler.dataflowGraph.tasks.NumberProducingDataflowTaskImplementation;
@@ -26,13 +27,13 @@ import org.sandwood.compiler.trees.irTree.IRTreeReturn;
 public abstract class Pow<A extends NumberVariable<A>, B extends NumberVariable<B>, C extends NumberVariable<C>>
         extends NumberProducingDataflowTaskImplementation<C> {
 
-    public final A left;
-    public final B right;
+    protected final A base;
+    protected final B exp;
 
     Pow(VariableType.Type<C> outputType, Location location, A a, B b) {
         super(DFType.POW, outputType, location, a, b);
-        this.left = a;
-        this.right = b;
+        this.base = a;
+        this.exp = b;
     }
 
     @Override
@@ -42,7 +43,7 @@ public abstract class Pow<A extends NumberVariable<A>, B extends NumberVariable<
 
     @Override
     public String getSandwoodExpression(boolean compressSandwoodCode) {
-        return "(" + left.getExpression(compressSandwoodCode) + "^" + right.getExpression(compressSandwoodCode) + ")";
+        return "(" + base.getExpression(compressSandwoodCode) + "^" + exp.getExpression(compressSandwoodCode) + ")";
     }
 
     @Override
@@ -50,13 +51,22 @@ public abstract class Pow<A extends NumberVariable<A>, B extends NumberVariable<
         if(this.getType() != other.getType())
             return false;
         Pow<?, ?, ?> dft = (Pow<?, ?, ?>) other;
-        return (left.equivalent(dft.left) && right.equivalent(dft.right));
+        return (base.equivalent(dft.base) && exp.equivalent(dft.exp));
     }
 
     @Override
     public final IRTreeReturn<?> getInverseIRInternal(int argPos, IRTreeReturn<C> taskOutput,
             BackTraceInfo backTraceInfo, CompilationContext compilationCtx) {
         throw new CompilerException(checkInversionError(argPos));
+    }
+
+    @Override
+    public DifferentialInfo getDifferentialInfo(DoubleVariable variable) {
+        DifferentialInfo baseInfo = base.getDifferentialInfo(variable);
+        DifferentialInfo expInfo = exp.getDifferentialInfo(variable);
+
+        return new DifferentialInfo(baseInfo.isDifferentiable() && expInfo.isDifferentiable(),
+                baseInfo.containsVariable() || expInfo.containsVariable());
     }
 
     private static class PowDD extends Pow<DoubleVariable, DoubleVariable, DoubleVariable> {
@@ -66,56 +76,81 @@ public abstract class Pow<A extends NumberVariable<A>, B extends NumberVariable<
 
         @Override
         public IRTreeReturn<DoubleVariable> getForwardIRinternal(CompilationContext compilationCtx) {
-            return IRTree.powDD(left.getForwardIR(compilationCtx), right.getForwardIR(compilationCtx));
+            return IRTree.powDD(base.getForwardIR(compilationCtx), exp.getForwardIR(compilationCtx));
         }
 
         @Override
         public IRTreeReturn<DoubleVariable> getMax(CompilationContext compilationCtx) {
-            if(!right.isDeterministic())
+            if(!exp.isDeterministic())
                 return null;
 
-            IRTreeReturn<DoubleVariable> leftMin = left.getMin(compilationCtx);
-            IRTreeReturn<DoubleVariable> leftMax = left.getMax(compilationCtx);
-            if(leftMin == null || leftMax == null)
+            IRTreeReturn<DoubleVariable> baseMin = base.getMin(compilationCtx);
+            IRTreeReturn<DoubleVariable> baseMax = base.getMax(compilationCtx);
+            if(baseMin == null || baseMax == null)
                 return null;
 
             // Test if this is possibly 0 to a positive power, in which case the minimum happens at zero and is zero if
             // the power is even, and happens a the minimum value if it is an odd power.
-            IRTreeReturn<BooleanVariable> guard = IRTree.and(IRTree.lessThanEqual(leftMin, IRTree.constant(0.0)),
-                    IRTree.lessThanEqual(IRTree.constant(0.0), leftMax),
-                    IRTree.lessThan(right.getForwardIR(compilationCtx), IRTree.constant(0.0)));
-            // min(0, minLeft^right)
+            IRTreeReturn<BooleanVariable> guard = IRTree.and(IRTree.lessThanEqual(baseMin, IRTree.constant(0.0)),
+                    IRTree.lessThanEqual(IRTree.constant(0.0), baseMax),
+                    IRTree.lessThan(exp.getForwardIR(compilationCtx), IRTree.constant(0.0)));
+            // min(0, minbase^exp)
             IRTreeReturn<DoubleVariable> trueCase = IRTree.constant(Double.POSITIVE_INFINITY);
-            // min(minLeft^b, maxLeft^b)
-            IRTreeReturn<DoubleVariable> falseCase = IRTree.max(
-                    IRTree.powDD(leftMin, right.getForwardIR(compilationCtx)),
-                    IRTree.powDD(leftMax, right.getForwardIR(compilationCtx)));
+            // min(minbase^b, maxbase^b)
+            IRTreeReturn<DoubleVariable> falseCase = IRTree.max(IRTree.powDD(baseMin, exp.getForwardIR(compilationCtx)),
+                    IRTree.powDD(baseMax, exp.getForwardIR(compilationCtx)));
             return IRTree.conditionalAssignment(guard, trueCase, falseCase);
         }
 
         @Override
         public IRTreeReturn<DoubleVariable> getMin(CompilationContext compilationCtx) {
-            if(!right.isDeterministic())
+            if(!exp.isDeterministic())
                 return null;
 
-            IRTreeReturn<DoubleVariable> leftMin = left.getMin(compilationCtx);
-            IRTreeReturn<DoubleVariable> leftMax = left.getMax(compilationCtx);
-            if(leftMin == null || leftMax == null)
+            IRTreeReturn<DoubleVariable> baseMin = base.getMin(compilationCtx);
+            IRTreeReturn<DoubleVariable> baseMax = base.getMax(compilationCtx);
+            if(baseMin == null || baseMax == null)
                 return null;
 
             // Test if this is possibly 0 to a positive power, in which case the minimum happens at zero and is zero if
             // the power is even, and happens a the minimum value if it is an odd power.
-            IRTreeReturn<BooleanVariable> guard = IRTree.and(IRTree.lessThanEqual(leftMin, IRTree.constant(0.0)),
-                    IRTree.lessThanEqual(IRTree.constant(0.0), leftMax),
-                    IRTree.lessThanEqual(IRTree.constant(0.0), right.getForwardIR(compilationCtx)));
-            // min(0, minLeft^right)
+            IRTreeReturn<BooleanVariable> guard = IRTree.and(IRTree.lessThanEqual(baseMin, IRTree.constant(0.0)),
+                    IRTree.lessThanEqual(IRTree.constant(0.0), baseMax),
+                    IRTree.lessThanEqual(IRTree.constant(0.0), exp.getForwardIR(compilationCtx)));
+            // min(0, minbase^exp)
             IRTreeReturn<DoubleVariable> trueCase = IRTree.min(IRTree.constant(0.0),
-                    IRTree.powDD(leftMin, right.getForwardIR(compilationCtx)));
-            // min(minLeft^b, maxLeft^b)
-            IRTreeReturn<DoubleVariable> falseCase = IRTree.min(
-                    IRTree.powDD(leftMin, right.getForwardIR(compilationCtx)),
-                    IRTree.powDD(leftMax, right.getForwardIR(compilationCtx)));
+                    IRTree.powDD(baseMin, exp.getForwardIR(compilationCtx)));
+            // min(minbase^b, maxbase^b)
+            IRTreeReturn<DoubleVariable> falseCase = IRTree.min(IRTree.powDD(baseMin, exp.getForwardIR(compilationCtx)),
+                    IRTree.powDD(baseMax, exp.getForwardIR(compilationCtx)));
             return IRTree.conditionalAssignment(guard, trueCase, falseCase);
+        }
+
+        @Override
+        protected DoubleVariable getDifferentialInternal(DoubleVariable variable, CompilationContext compilationCtx) {
+            DifferentialInfo baseInfo = base.getDifferentialInfo(variable);
+            DifferentialInfo expInfo = exp.getDifferentialInfo(variable);
+
+            if(baseInfo.containsVariable()) {
+                if(expInfo.containsVariable()) {
+                    DoubleVariable baseDiff = base.getDifferential(variable, compilationCtx);
+                    DoubleVariable expDiff = exp.getDifferential(variable, compilationCtx);
+                    DoubleVariable expExpr = expDiff.times(Log.log(base));
+                    DoubleVariable baseExpr = baseDiff.times(exp).divide(base);
+                    return output.times(expExpr.add(baseExpr));
+                } else {
+                    DoubleVariable baseDiff = base.getDifferential(variable, compilationCtx);
+                    DoubleVariable basePower = pow(base, exp.subtract(IntVariable.intVariable(1)), getLocation());
+                    return exp.times(baseDiff.times(basePower));
+                }
+            } else {
+                if(expInfo.containsVariable()) {
+                    DoubleVariable expDiff = exp.getDifferential(variable, compilationCtx);
+                    return output.times(expDiff).times(Log.log(base));
+                } else {
+                    return DoubleVariable.doubleVariable(0.0);
+                }
+            }
         }
     }
 
@@ -126,56 +161,67 @@ public abstract class Pow<A extends NumberVariable<A>, B extends NumberVariable<
 
         @Override
         public IRTreeReturn<DoubleVariable> getForwardIRinternal(CompilationContext compilationCtx) {
-            return IRTree.powDI(left.getForwardIR(compilationCtx), right.getForwardIR(compilationCtx));
+            return IRTree.powDI(base.getForwardIR(compilationCtx), exp.getForwardIR(compilationCtx));
         }
 
         @Override
         public IRTreeReturn<DoubleVariable> getMax(CompilationContext compilationCtx) {
-            if(!right.isDeterministic())
+            if(!exp.isDeterministic())
                 return null;
 
-            IRTreeReturn<DoubleVariable> leftMin = left.getMin(compilationCtx);
-            IRTreeReturn<DoubleVariable> leftMax = left.getMax(compilationCtx);
-            if(leftMin == null || leftMax == null)
+            IRTreeReturn<DoubleVariable> baseMin = base.getMin(compilationCtx);
+            IRTreeReturn<DoubleVariable> baseMax = base.getMax(compilationCtx);
+            if(baseMin == null || baseMax == null)
                 return null;
 
             // Test if this is possibly 0 to a positive power, in which case the minimum happens at zero and is zero if
             // the power is even, and happens a the minimum value if it is an odd power.
-            IRTreeReturn<BooleanVariable> guard = IRTree.and(IRTree.lessThanEqual(leftMin, IRTree.constant(0.0)),
-                    IRTree.lessThanEqual(IRTree.constant(0.0), leftMax),
-                    IRTree.lessThan(right.getForwardIR(compilationCtx), IRTree.constant(0)));
-            // min(0, minLeft^right)
+            IRTreeReturn<BooleanVariable> guard = IRTree.and(IRTree.lessThanEqual(baseMin, IRTree.constant(0.0)),
+                    IRTree.lessThanEqual(IRTree.constant(0.0), baseMax),
+                    IRTree.lessThan(exp.getForwardIR(compilationCtx), IRTree.constant(0)));
+            // min(0, minbase^exp)
             IRTreeReturn<DoubleVariable> trueCase = IRTree.constant(Double.POSITIVE_INFINITY);
-            // min(minLeft^b, maxLeft^b)
-            IRTreeReturn<DoubleVariable> falseCase = IRTree.max(
-                    IRTree.powDI(leftMin, right.getForwardIR(compilationCtx)),
-                    IRTree.powDI(leftMax, right.getForwardIR(compilationCtx)));
+            // min(minbase^b, maxbase^b)
+            IRTreeReturn<DoubleVariable> falseCase = IRTree.max(IRTree.powDI(baseMin, exp.getForwardIR(compilationCtx)),
+                    IRTree.powDI(baseMax, exp.getForwardIR(compilationCtx)));
             return IRTree.conditionalAssignment(guard, trueCase, falseCase);
         }
 
         @Override
         public IRTreeReturn<DoubleVariable> getMin(CompilationContext compilationCtx) {
-            if(!right.isDeterministic())
+            if(!exp.isDeterministic())
                 return null;
 
-            IRTreeReturn<DoubleVariable> leftMin = left.getMin(compilationCtx);
-            IRTreeReturn<DoubleVariable> leftMax = left.getMax(compilationCtx);
-            IRTreeReturn<IntVariable> rightMax = right.getMax(compilationCtx);
-            if(leftMin == null || leftMax == null || rightMax == null)
+            IRTreeReturn<DoubleVariable> baseMin = base.getMin(compilationCtx);
+            IRTreeReturn<DoubleVariable> baseMax = base.getMax(compilationCtx);
+            IRTreeReturn<IntVariable> expMax = exp.getMax(compilationCtx);
+            if(baseMin == null || baseMax == null || expMax == null)
                 return null;
 
             // Test if this is possibly 0 to a positive power, in which case the minimum happens at zero and is zero if
             // the power is even, and happens a the minimum value if it is an odd power.
-            IRTreeReturn<BooleanVariable> guard = IRTree.and(IRTree.lessThanEqual(leftMin, IRTree.constant(0.0)),
-                    IRTree.lessThanEqual(IRTree.constant(0.0), leftMax), IRTree.lessThan(IRTree.constant(0), rightMax));
-            // min(0, minLeft^right)
+            IRTreeReturn<BooleanVariable> guard = IRTree.and(IRTree.lessThanEqual(baseMin, IRTree.constant(0.0)),
+                    IRTree.lessThanEqual(IRTree.constant(0.0), baseMax), IRTree.lessThan(IRTree.constant(0), expMax));
+            // min(0, minbase^exp)
             IRTreeReturn<DoubleVariable> trueCase = IRTree.min(IRTree.constant(0.0),
-                    IRTree.powDI(leftMin, right.getForwardIR(compilationCtx)));
-            // min(minLeft^b, maxLeft^b)
-            IRTreeReturn<DoubleVariable> falseCase = IRTree.min(
-                    IRTree.powDI(leftMin, right.getForwardIR(compilationCtx)),
-                    IRTree.powDI(leftMax, right.getForwardIR(compilationCtx)));
+                    IRTree.powDI(baseMin, exp.getForwardIR(compilationCtx)));
+            // min(minbase^b, maxbase^b)
+            IRTreeReturn<DoubleVariable> falseCase = IRTree.min(IRTree.powDI(baseMin, exp.getForwardIR(compilationCtx)),
+                    IRTree.powDI(baseMax, exp.getForwardIR(compilationCtx)));
             return IRTree.conditionalAssignment(guard, trueCase, falseCase);
+        }
+
+        @Override
+        protected DoubleVariable getDifferentialInternal(DoubleVariable variable, CompilationContext compilationCtx) {
+            DifferentialInfo baseInfo = base.getDifferentialInfo(variable);
+
+            if(baseInfo.containsVariable()) {
+                DoubleVariable baseDiff = base.getDifferential(variable, compilationCtx);
+                DoubleVariable basePower = pow(base, exp.subtract(IntVariable.intVariable(1)), getLocation());
+                return exp.times(baseDiff.times(basePower));
+            } else {
+                return DoubleVariable.doubleVariable(0.0);
+            }
         }
     }
 
@@ -186,56 +232,66 @@ public abstract class Pow<A extends NumberVariable<A>, B extends NumberVariable<
 
         @Override
         public IRTreeReturn<DoubleVariable> getForwardIRinternal(CompilationContext compilationCtx) {
-            return IRTree.powID(left.getForwardIR(compilationCtx), right.getForwardIR(compilationCtx));
+            return IRTree.powID(base.getForwardIR(compilationCtx), exp.getForwardIR(compilationCtx));
         }
 
         @Override
         public IRTreeReturn<DoubleVariable> getMax(CompilationContext compilationCtx) {
-            if(!right.isDeterministic())
+            if(!exp.isDeterministic())
                 return null;
 
-            IRTreeReturn<IntVariable> leftMin = left.getMin(compilationCtx);
-            IRTreeReturn<IntVariable> leftMax = left.getMax(compilationCtx);
-            if(leftMin == null || leftMax == null)
+            IRTreeReturn<IntVariable> baseMin = base.getMin(compilationCtx);
+            IRTreeReturn<IntVariable> baseMax = base.getMax(compilationCtx);
+            if(baseMin == null || baseMax == null)
                 return null;
 
             // Test if this is possibly 0 to a positive power, in which case the minimum happens at zero and is zero if
             // the power is even, and happens a the minimum value if it is an odd power.
-            IRTreeReturn<BooleanVariable> guard = IRTree.and(IRTree.lessThanEqual(leftMin, IRTree.constant(0)),
-                    IRTree.lessThanEqual(IRTree.constant(0), leftMax),
-                    IRTree.lessThan(right.getForwardIR(compilationCtx), IRTree.constant(0.0)));
-            // min(0, minLeft^right)
+            IRTreeReturn<BooleanVariable> guard = IRTree.and(IRTree.lessThanEqual(baseMin, IRTree.constant(0)),
+                    IRTree.lessThanEqual(IRTree.constant(0), baseMax),
+                    IRTree.lessThan(exp.getForwardIR(compilationCtx), IRTree.constant(0.0)));
+            // min(0, minbase^exp)
             IRTreeReturn<DoubleVariable> trueCase = IRTree.constant(Double.POSITIVE_INFINITY);
-            // min(minLeft^b, maxLeft^b)
-            IRTreeReturn<DoubleVariable> falseCase = IRTree.max(
-                    IRTree.powID(leftMin, right.getForwardIR(compilationCtx)),
-                    IRTree.powID(leftMax, right.getForwardIR(compilationCtx)));
+            // min(minbase^b, maxbase^b)
+            IRTreeReturn<DoubleVariable> falseCase = IRTree.max(IRTree.powID(baseMin, exp.getForwardIR(compilationCtx)),
+                    IRTree.powID(baseMax, exp.getForwardIR(compilationCtx)));
             return IRTree.conditionalAssignment(guard, trueCase, falseCase);
         }
 
         @Override
         public IRTreeReturn<DoubleVariable> getMin(CompilationContext compilationCtx) {
-            if(!right.isDeterministic())
+            if(!exp.isDeterministic())
                 return null;
 
-            IRTreeReturn<IntVariable> leftMin = left.getMin(compilationCtx);
-            IRTreeReturn<IntVariable> leftMax = left.getMax(compilationCtx);
-            IRTreeReturn<DoubleVariable> rightMax = right.getMax(compilationCtx);
-            if(leftMin == null || leftMax == null || rightMax == null)
+            IRTreeReturn<IntVariable> baseMin = base.getMin(compilationCtx);
+            IRTreeReturn<IntVariable> baseMax = base.getMax(compilationCtx);
+            IRTreeReturn<DoubleVariable> expMax = exp.getMax(compilationCtx);
+            if(baseMin == null || baseMax == null || expMax == null)
                 return null;
 
             // Test if this is possibly 0 to a positive power, in which case the minimum happens at zero and is zero if
             // the power is even, and happens a the minimum value if it is an odd power.
-            IRTreeReturn<BooleanVariable> guard = IRTree.and(IRTree.lessThanEqual(leftMin, IRTree.constant(0)),
-                    IRTree.lessThanEqual(IRTree.constant(0), leftMax), IRTree.lessThan(IRTree.constant(0.0), rightMax));
-            // min(0, minLeft^right)
+            IRTreeReturn<BooleanVariable> guard = IRTree.and(IRTree.lessThanEqual(baseMin, IRTree.constant(0)),
+                    IRTree.lessThanEqual(IRTree.constant(0), baseMax), IRTree.lessThan(IRTree.constant(0.0), expMax));
+            // min(0, minbase^exp)
             IRTreeReturn<DoubleVariable> trueCase = IRTree.min(IRTree.constant(0.0),
-                    IRTree.powID(leftMin, right.getForwardIR(compilationCtx)));
-            // min(minLeft^b, maxLeft^b)
-            IRTreeReturn<DoubleVariable> falseCase = IRTree.min(
-                    IRTree.powID(leftMin, right.getForwardIR(compilationCtx)),
-                    IRTree.powID(leftMax, right.getForwardIR(compilationCtx)));
+                    IRTree.powID(baseMin, exp.getForwardIR(compilationCtx)));
+            // min(minbase^b, maxbase^b)
+            IRTreeReturn<DoubleVariable> falseCase = IRTree.min(IRTree.powID(baseMin, exp.getForwardIR(compilationCtx)),
+                    IRTree.powID(baseMax, exp.getForwardIR(compilationCtx)));
             return IRTree.conditionalAssignment(guard, trueCase, falseCase);
+        }
+
+        @Override
+        protected DoubleVariable getDifferentialInternal(DoubleVariable variable, CompilationContext compilationCtx) {
+            DifferentialInfo expInfo = exp.getDifferentialInfo(variable);
+
+            if(expInfo.containsVariable()) {
+                DoubleVariable expDiff = exp.getDifferential(variable, compilationCtx);
+                return output.times(expDiff).times(Log.log(base));
+            } else {
+                return DoubleVariable.doubleVariable(0.0);
+            }
         }
     }
 
@@ -246,54 +302,59 @@ public abstract class Pow<A extends NumberVariable<A>, B extends NumberVariable<
 
         @Override
         public IRTreeReturn<IntVariable> getForwardIRinternal(CompilationContext compilationCtx) {
-            return IRTree.powII(left.getForwardIR(compilationCtx), right.getForwardIR(compilationCtx));
+            return IRTree.powII(base.getForwardIR(compilationCtx), exp.getForwardIR(compilationCtx));
         }
 
         @Override
         public IRTreeReturn<IntVariable> getMax(CompilationContext compilationCtx) {
-            if(!right.isDeterministic())
+            if(!exp.isDeterministic())
                 return null;
 
-            IRTreeReturn<IntVariable> leftMin = left.getMin(compilationCtx);
-            IRTreeReturn<IntVariable> leftMax = left.getMax(compilationCtx);
-            if(leftMin == null || leftMax == null)
+            IRTreeReturn<IntVariable> baseMin = base.getMin(compilationCtx);
+            IRTreeReturn<IntVariable> baseMax = base.getMax(compilationCtx);
+            if(baseMin == null || baseMax == null)
                 return null;
 
             // Test if this is possibly 0 to a positive power, in which case the minimum happens at zero and is zero if
             // the power is even, and happens a the minimum value if it is an odd power.
-            IRTreeReturn<BooleanVariable> guard = IRTree.and(IRTree.lessThanEqual(leftMin, IRTree.constant(0)),
-                    IRTree.lessThanEqual(IRTree.constant(0), leftMax),
-                    IRTree.lessThan(right.getForwardIR(compilationCtx), IRTree.constant(0)));
-            // min(0, minLeft^right)
+            IRTreeReturn<BooleanVariable> guard = IRTree.and(IRTree.lessThanEqual(baseMin, IRTree.constant(0)),
+                    IRTree.lessThanEqual(IRTree.constant(0), baseMax),
+                    IRTree.lessThan(exp.getForwardIR(compilationCtx), IRTree.constant(0)));
+            // min(0, minbase^exp)
             IRTreeReturn<IntVariable> trueCase = IRTree.constant(Integer.MAX_VALUE);
-            // min(minLeft^b, maxLeft^b)
-            IRTreeReturn<IntVariable> falseCase = IRTree.max(IRTree.powII(leftMin, right.getForwardIR(compilationCtx)),
-                    IRTree.powII(leftMax, right.getForwardIR(compilationCtx)));
+            // min(minbase^b, maxbase^b)
+            IRTreeReturn<IntVariable> falseCase = IRTree.max(IRTree.powII(baseMin, exp.getForwardIR(compilationCtx)),
+                    IRTree.powII(baseMax, exp.getForwardIR(compilationCtx)));
             return IRTree.conditionalAssignment(guard, trueCase, falseCase);
         }
 
         @Override
         public IRTreeReturn<IntVariable> getMin(CompilationContext compilationCtx) {
-            if(!right.isDeterministic())
+            if(!exp.isDeterministic())
                 return null;
 
-            IRTreeReturn<IntVariable> leftMin = left.getMin(compilationCtx);
-            IRTreeReturn<IntVariable> leftMax = left.getMax(compilationCtx);
-            IRTreeReturn<IntVariable> rightMax = right.getMax(compilationCtx);
-            if(leftMin == null || leftMax == null || rightMax == null)
+            IRTreeReturn<IntVariable> baseMin = base.getMin(compilationCtx);
+            IRTreeReturn<IntVariable> baseMax = base.getMax(compilationCtx);
+            IRTreeReturn<IntVariable> expMax = exp.getMax(compilationCtx);
+            if(baseMin == null || baseMax == null || expMax == null)
                 return null;
 
             // Test if this is possibly 0 to a positive power, in which case the minimum happens at zero and is zero if
             // the power is even, and happens a the minimum value if it is an odd power.
-            IRTreeReturn<BooleanVariable> guard = IRTree.and(IRTree.lessThanEqual(leftMin, IRTree.constant(0)),
-                    IRTree.lessThanEqual(IRTree.constant(0), leftMax), IRTree.lessThan(IRTree.constant(0), rightMax));
-            // min(0, minLeft^right)
+            IRTreeReturn<BooleanVariable> guard = IRTree.and(IRTree.lessThanEqual(baseMin, IRTree.constant(0)),
+                    IRTree.lessThanEqual(IRTree.constant(0), baseMax), IRTree.lessThan(IRTree.constant(0), expMax));
+            // min(0, minbase^exp)
             IRTreeReturn<IntVariable> trueCase = IRTree.min(IRTree.constant(0),
-                    IRTree.powII(leftMin, right.getForwardIR(compilationCtx)));
-            // min(minLeft^b, maxLeft^b)
-            IRTreeReturn<IntVariable> falseCase = IRTree.min(IRTree.powII(leftMin, right.getForwardIR(compilationCtx)),
-                    IRTree.powII(leftMax, right.getForwardIR(compilationCtx)));
+                    IRTree.powII(baseMin, exp.getForwardIR(compilationCtx)));
+            // min(minbase^b, maxbase^b)
+            IRTreeReturn<IntVariable> falseCase = IRTree.min(IRTree.powII(baseMin, exp.getForwardIR(compilationCtx)),
+                    IRTree.powII(baseMax, exp.getForwardIR(compilationCtx)));
             return IRTree.conditionalAssignment(guard, trueCase, falseCase);
+        }
+
+        @Override
+        protected DoubleVariable getDifferentialInternal(DoubleVariable variable, CompilationContext compilationCtx) {
+            return DoubleVariable.doubleVariable(0.0);
         }
     }
 

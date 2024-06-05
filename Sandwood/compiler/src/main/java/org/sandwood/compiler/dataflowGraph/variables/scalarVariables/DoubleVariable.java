@@ -1,13 +1,15 @@
 /*
  * Sandwood
  *
- * Copyright (c) 2019-2025, Oracle and/or its affiliates
+ * Copyright (c) 2019-2026, Oracle and/or its affiliates
  *
  * Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl/
  */
 
 package org.sandwood.compiler.dataflowGraph.variables.scalarVariables;
 
+import org.sandwood.compiler.compilation.CompilationContext;
+import org.sandwood.compiler.dataflowGraph.autoDiff.DifferentialInfo;
 import org.sandwood.compiler.dataflowGraph.scopes.Scope;
 import org.sandwood.compiler.dataflowGraph.scopes.ScopeStack;
 import org.sandwood.compiler.dataflowGraph.tasks.NumberProducingDataflowTask;
@@ -29,6 +31,7 @@ import org.sandwood.compiler.dataflowGraph.tasks.returnTasks.constant.ConstantDo
 import org.sandwood.compiler.dataflowGraph.variables.VariableDescription;
 import org.sandwood.compiler.dataflowGraph.variables.VariableType;
 import org.sandwood.compiler.exceptions.ConstraintAlreadySetException;
+import org.sandwood.compiler.names.VariableNames;
 import org.sandwood.compiler.srcTools.sourceToSource.Location;
 
 public class DoubleVariable extends NumberVariable<DoubleVariable> {
@@ -64,6 +67,7 @@ public class DoubleVariable extends NumberVariable<DoubleVariable> {
         return Add.add(this, d, location);
     }
 
+    @Override
     public DoubleVariable add(DoubleVariable a) {
         return Add.add(this, a);
     }
@@ -72,6 +76,7 @@ public class DoubleVariable extends NumberVariable<DoubleVariable> {
         return Add.add(this, a, location);
     }
 
+    @Override
     public DoubleVariable add(IntVariable a) {
         return Add.add(this, a);
     }
@@ -96,6 +101,7 @@ public class DoubleVariable extends NumberVariable<DoubleVariable> {
         return Subtract.subtract(this, a, location);
     }
 
+    @Override
     public DoubleVariable subtract(IntVariable a) {
         return Subtract.subtract(this, a);
     }
@@ -104,6 +110,7 @@ public class DoubleVariable extends NumberVariable<DoubleVariable> {
         return Subtract.subtract(this, a, location);
     }
 
+    @Override
     public DoubleVariable subtract(DoubleVariable a) {
         return Subtract.subtract(this, a);
     }
@@ -128,6 +135,7 @@ public class DoubleVariable extends NumberVariable<DoubleVariable> {
         return Multiply.multiply(this, a, location);
     }
 
+    @Override
     public DoubleVariable times(IntVariable a) {
         return Multiply.multiply(this, a);
     }
@@ -136,6 +144,7 @@ public class DoubleVariable extends NumberVariable<DoubleVariable> {
         return Multiply.multiply(this, a, location);
     }
 
+    @Override
     public DoubleVariable times(DoubleVariable a) {
         return Multiply.multiply(this, a);
     }
@@ -160,6 +169,7 @@ public class DoubleVariable extends NumberVariable<DoubleVariable> {
         return Divide.divide(this, a, location);
     }
 
+    @Override
     public DoubleVariable divide(IntVariable a) {
         return Divide.divide(this, a);
     }
@@ -168,6 +178,7 @@ public class DoubleVariable extends NumberVariable<DoubleVariable> {
         return Divide.divide(this, a, location);
     }
 
+    @Override
     public DoubleVariable divide(DoubleVariable a) {
         return Divide.divide(this, a);
     }
@@ -176,6 +187,7 @@ public class DoubleVariable extends NumberVariable<DoubleVariable> {
         return Divide.divide(this, a, location);
     }
 
+    @Override
     public DoubleVariable remainder(IntVariable i) {
         return Remainder.remainder(this, i);
     }
@@ -342,6 +354,42 @@ public class DoubleVariable extends NumberVariable<DoubleVariable> {
 
     public BooleanVariable notEq(DoubleVariable v, Location location) {
         return Eq.eq(this, v, location).negate(location);
+    }
+
+    @Override
+    public DifferentialInfo getDifferentialInfo(DoubleVariable variable) {
+
+        if(this == variable) {
+            return new DifferentialInfo(true, containsVariable(variable));
+        }
+        return getParent().getDifferentialInfo(variable);
+    }
+
+    @Override
+    public final DoubleVariable getDifferential(DoubleVariable variable, CompilationContext compilationCtx) {
+
+        // If the differential variable is already calculated, obtain and return it.
+        DoubleVariable differential = (DoubleVariable) compilationCtx.getDifferential(this, variable);
+        if(differential != null) {
+            return differential;
+        } else {
+
+            ScopeStack.pushScope(scope());
+            if(isFixed() || isDeterministic())
+                differential = DoubleVariable.doubleVariable(0.0);
+            else if(this == variable)
+                differential = DoubleVariable.doubleVariable(1.0);
+            else {
+                differential = getParent().getDifferential(variable, compilationCtx);
+                compilationCtx.addDifferential(this, variable, differential);
+            }
+            ScopeStack.popScope(scope());
+
+            differential.setAlias(VariableNames.differentialName(this, variable));
+            differential.setPrivate();
+
+            return differential;
+        }
     }
 
     @Override

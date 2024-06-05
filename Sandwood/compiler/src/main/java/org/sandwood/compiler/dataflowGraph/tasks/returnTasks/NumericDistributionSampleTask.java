@@ -1,7 +1,7 @@
 /*
  * Sandwood
  *
- * Copyright (c) 2019-2023, Oracle and/or its affiliates
+ * Copyright (c) 2019-2026, Oracle and/or its affiliates
  *
  * Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl/
  */
@@ -9,10 +9,13 @@
 package org.sandwood.compiler.dataflowGraph.tasks.returnTasks;
 
 import org.sandwood.compiler.compilation.CompilationContext;
+import org.sandwood.compiler.dataflowGraph.autoDiff.DifferentialInfo;
 import org.sandwood.compiler.dataflowGraph.tasks.NumberProducingDataflowTask;
 import org.sandwood.compiler.dataflowGraph.variables.VariableType.Type;
 import org.sandwood.compiler.dataflowGraph.variables.randomVariables.NumericDistributableRandomVariable;
+import org.sandwood.compiler.dataflowGraph.variables.scalarVariables.DoubleVariable;
 import org.sandwood.compiler.dataflowGraph.variables.scalarVariables.NumberVariable;
+import org.sandwood.compiler.exceptions.CompilerException;
 import org.sandwood.compiler.srcTools.sourceToSource.Location;
 import org.sandwood.compiler.trees.irTree.IRTreeReturn;
 
@@ -31,5 +34,20 @@ public class NumericDistributionSampleTask<A extends NumberVariable<A>, B extend
     @Override
     public IRTreeReturn<A> getMin(CompilationContext compilationCtx) {
         return ((NumericDistributableRandomVariable<A, B>) randomVariable).getMin(compilationCtx);
+    }
+
+    @Override
+    public DoubleVariable getDifferential(DoubleVariable variable, CompilationContext compilationCtx) {
+        throw new CompilerException("Distributons from sample variables are not differentiables.");
+    }
+
+    @Override
+    public boolean isDifferentiable(DoubleVariable variable) {
+        return false;
+    }
+
+    @Override
+    public DifferentialInfo getDifferentialInfo(DoubleVariable variable) {
+        return new DifferentialInfo(false, false);
     }
 }

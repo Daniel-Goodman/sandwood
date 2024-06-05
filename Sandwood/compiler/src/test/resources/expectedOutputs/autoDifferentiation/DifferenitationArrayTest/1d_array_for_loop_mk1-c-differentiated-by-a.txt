@@ -1,0 +1,33 @@
+Initial Graph
+array[1] = (b * b);
+for(int i = 2; i < 5; i += 1)
+	array[i] = ((i * b) * b);
+c = array[0];
+
+
+Constants
+array[0] = 0.5
+
+Allocator
+
+// Constructor for array
+{
+	array = new double[5];
+}
+
+
+Differential Graph: 'c' differentiated by 'a'
+diff$c$a = 0.0
+
+Optimised
+diff$c$a = 0.0
+
+Additional Constants
+
+
+Updated Allocator
+
+// Constructor for array
+{
+	array = new double[5];
+}

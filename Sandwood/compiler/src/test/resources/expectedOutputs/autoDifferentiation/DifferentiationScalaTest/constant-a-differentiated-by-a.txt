@@ -1,0 +1,21 @@
+Initial Graph
+a = 10.0
+
+Constants
+a = 10.0;
+b = 50.0;
+
+
+Allocator
+
+
+Differential Graph: 'a' differentiated by 'a'
+diff$a$a = 0.0
+
+Optimised
+diff$a$a = 0.0
+
+Additional Constants
+
+
+Updated Allocator

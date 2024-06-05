@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 
+import org.sandwood.compiler.compilation.CompilationContext;
 import org.sandwood.compiler.compilation.util.CompilationDesc;
 import org.sandwood.compiler.dataflowGraph.scopes.GlobalScope;
 import org.sandwood.compiler.dataflowGraph.scopes.Scope;
@@ -106,14 +107,11 @@ public class TracesImplementation extends Traces {
     // Sample |-> Set(IntermediateVariables).
     private final Map<SampleTask<?, ?>, IntermediateDesc> sampleToIntermediates = new HashMap<>();
     private final Map<Variable<?>, Set<SampleTask<?, ?>>> intermediateSampleTaskDependencies = new HashMap<>();
-    private final Map<Variable<?>, Set<Variable<?>>> intermediateSampleVarDependencies = new HashMap<>();
     private final Map<Variable<?>, Set<Variable<?>>> requiredIntermediates = new HashMap<>();
 
     // Sample |-> SampleDesc
     private final Map<SampleTask<?, ?>, SampleTraceDesc> sampleTrace = new HashMap<>();
 
-    // Variable |-> Set of random variables generating it.
-    private final Map<Variable<?>, Set<RandomVariable<?, ?>>> varToRV = new HashMap<>();
     // Variable to the sample tasks generating it.
     private final Map<Variable<?>, Set<SampleTask<?, ?>>> sourceTasks = new HashMap<>();
     // Variable to the observed variable generating it.
@@ -1061,60 +1059,59 @@ public class TracesImplementation extends Traces {
      * @param dagInfo
      */
     private void constructArrayLengthTraces(DAGInfo dagInfo) {
+        for(TraceSinkPair p:dagInfo.allTraces()) {
+            constructArrayLengthTraces(p);
+        }
+    }
+
+    private void constructArrayLengthTraces(TraceSinkPair p) {
         List<Trace> partialTraces = new ArrayList<>();
         Trace sourceTrace = new Trace();
-        for(TraceSinkPair p:dagInfo.allTraces()) {
-            sourceTrace.clear();
-            for(int i = 0; i < p.handle.size(); i++) {
-                DataflowTaskArgDesc d = p.handle.get(i);
-                sourceTrace.add(d);
-                switch(d.task.getType()) {
-                    case GET:
-                        LengthTraceDesc ld = lengthTraces.computeIfAbsent((GetTask<?>) d.task,
-                                k -> new LengthTraceDesc());
-                        if(!partialTraces.isEmpty()) {
-                            for(Trace t:partialTraces)
-                                t.add(d);
-                            Trace trace = partialTraces.remove(partialTraces.size() - 1);
-                            ld.addTraceToPut(TraceHandle.getTraceHandle(trace));
-                        }
-                        break;
-                    case GET_LENGTH:
-                        partialTraces.clear();
-                        break;
-                    case PUT:
-                        if(d.argPos == 2) {
-                            PutTask<?> pt = (PutTask<?>) d.task;
-                            if(pt.value.getType().isArray()) {
-                                Trace trace = new Trace();
-                                partialTraces.add(trace);
-                                for(Trace t:partialTraces)
-                                    t.add(d);
-                            }
-                        } else {
-                            partialTraces.clear();
-                        }
-                        break;
-                    case REDUCE_INPUT:
-                        if(d.argPos == 2) {
-                            for(Trace t:partialTraces)
-                                t.add(d);
-                        } else
-                            partialTraces.clear();
-                        break;
-                    case REDUCTION_RETURN:
+        for(int i = 0; i < p.handle.size(); i++) {
+            DataflowTaskArgDesc d = p.handle.get(i);
+            sourceTrace.add(d);
+            switch(d.task.getType()) {
+                case GET:
+                    LengthTraceDesc ld = lengthTraces.computeIfAbsent((GetTask<?>) d.task, k -> new LengthTraceDesc());
+                    if(!partialTraces.isEmpty()) {
                         for(Trace t:partialTraces)
                             t.add(d);
-                        break;
-                    default:
-                        assert partialTraces.isEmpty();
-                        break;
-
-                }
+                        Trace trace = partialTraces.remove(partialTraces.size() - 1);
+                        ld.addTraceToPut(TraceHandle.getTraceHandle(trace));
+                    }
+                    break;
+                case GET_LENGTH:
+                    partialTraces.clear();
+                    break;
+                case PUT:
+                    if(d.argPos == 2) {
+                        PutTask<?> pt = (PutTask<?>) d.task;
+                        if(pt.value.getType().isArray()) {
+                            Trace trace = new Trace();
+                            partialTraces.add(trace);
+                            for(Trace t:partialTraces)
+                                t.add(d);
+                        }
+                    } else {
+                        partialTraces.clear();
+                    }
+                    break;
+                case REDUCE_INPUT:
+                    if(d.argPos == 2) {
+                        for(Trace t:partialTraces)
+                            t.add(d);
+                    } else
+                        partialTraces.clear();
+                    break;
+                case REDUCTION_RETURN:
+                    for(Trace t:partialTraces)
+                        t.add(d);
+                    break;
+                default:
+                    assert partialTraces.isEmpty();
+                    break;
             }
-            partialTraces.clear();
         }
-
     }
 
     @Override
@@ -1159,7 +1156,18 @@ public class TracesImplementation extends Traces {
     }
 
     private void setIntermediates() {
-        for(Variable<?> v:allVariables) {
+        setIntermediates(allVariables);
+    }
+
+    private void setIntermediates(TraceHandle handle) {
+        Set<Variable<?>> outputs = new HashSet<>();
+        for(DataflowTaskArgDesc d:handle)
+            outputs.add(d.task.getOutput());
+        setIntermediates(outputs);
+    }
+
+    private void setIntermediates(Set<Variable<?>> variables) {
+        for(Variable<?> v:variables) {
             if(!(v.getParent().getType() == DFType.CONSTRUCT_INPUT || (v instanceof RandomVariable))) {
                 if(v.isPrivate()) { // Look for outermost arrays and set them as intermediates.
                     if((v.getType().isArray() && !((ArrayVariable<?>) v).isSubArray())) {
@@ -1170,6 +1178,7 @@ public class TracesImplementation extends Traces {
                 } else {
                     if(!v.getType().isArray() || !((ArrayVariable<?>) v).isSubArray())
                         v.setIntermediate();
+
                     if(v.isDeterministic())
                         deterministicVars.add(v);
                     else
@@ -1220,8 +1229,9 @@ public class TracesImplementation extends Traces {
         VariableDescription<A> oldName = v.getUniqueVarDesc();
         VariableDescription<A> newName = v.getVarDesc();
         v.setUniqueVarDesc(newName);
-        if(namedVariables.containsKey(oldName.name))
+        if(namedVariables.containsKey(oldName.name)) {
             namedVariables.put(newName.name, namedVariables.remove(oldName.name));
+        }
     }
 
     /**
@@ -1239,7 +1249,6 @@ public class TracesImplementation extends Traces {
         }
         randomParents.put(randomVariable, inputSamples);
         randomTraces.put(randomVariable, inputTraces);
-
     }
 
     private void addObservedChild(TraceSinkPair p) {
@@ -1293,8 +1302,6 @@ public class TracesImplementation extends Traces {
                     terminalSampleTasks.remove(sourceSample);
                 }
 
-                addToVarToSample(sink, sourceRV);
-
                 // Nothing progresses beyond this variable.
                 if(sink.getConsumers().size() == 1 && sink.isObserved())
                     findTerminalVariables(handle);
@@ -1306,7 +1313,6 @@ public class TracesImplementation extends Traces {
                 SplitTrace splitTrace = splitTrace(handle);
                 TraceHandle toSampleHandle = TraceHandle.getTraceHandle(splitTrace.toSample);
                 setSampleVariableTraces.add(toSampleHandle);
-                addToVarToSample(splitTrace.sampleVar, sourceRV);
 
                 sampleTrace.computeIfAbsent(sourceSample,
                         k -> new SampleTraceDesc(splitTrace.sampleVar, toSampleHandle));
@@ -1606,25 +1612,40 @@ public class TracesImplementation extends Traces {
         }
     }
 
+    @Override
+    public void addDifferentialVariable(Variable<?> v, CompilationContext compilationCtx) {
+        DAGInfo dagInfo = new DAGInfo();
+        v.constructTrace(dagInfo::addDifferentialChild);
+        dagInfo.filterTraces();
+
+        for(TraceSinkPair p:dagInfo.differentialTraces()) {
+            setFlags(p);
+            TraceHandle handle = p.handle;
+
+            setIntermediates(handle);
+
+            for(DataflowTaskArgDesc d:handle) {
+                Variable<?> output = d.task.getOutput();
+                allVariables.add(output);
+
+                boolean isSubArray = v.getType().isArray() && ((ArrayVariable<?>) v).isSubArray();
+                if(v.isIntermediate() || (v.isSample() && !isSubArray))
+                    compilationCtx.addConstructedClassField(v);
+            }
+
+            ProducingDataflowTask<?> sourceTask = handle.get(0).task;
+            if(sourceTask.getType() == DFType.SAMPLE)
+                addIntermediates(handle);
+
+            constructArrayLengthTraces(p);
+        }
+    }
+
     private void findTerminalVariables(TraceHandle h) {
         for(DataflowTaskArgDesc d:h) {
             Variable<?> v = d.task.getOutput();
             if(v.getConsumers().isEmpty())
                 terminalVariables.add(v);
-        }
-    }
-
-    private static class SplitTrace {
-        // Splitting the trace into two parts, the part containing the gets and the part
-        // containing the puts
-        public final Trace fromConsumer = new Trace(); // Trace from the consuming task to the intermediate value.
-        public final Trace toSample = new Trace();
-        public Variable<?> sampleVar; // The variable holding the stored values.
-
-        @Override
-        public String toString() {
-            return "From the consumer:\n" + fromConsumer + "\nTo the sample task:\n" + toSample + "\nSample variable: "
-                    + sampleVar.getVarDesc() + "\n======\n";
         }
     }
 
@@ -1733,7 +1754,6 @@ public class TracesImplementation extends Traces {
                 SplitTrace splitTrace = splitTrace(handle);
                 TraceHandle toSampleHandle = TraceHandle.getTraceHandle(splitTrace.toSample);
                 setSampleVariableTraces.add(toSampleHandle);
-                addToVarToSample(splitTrace.sampleVar, sourceRV);
 
                 SampleTraceDesc sampleTraceDesc = sampleTrace.computeIfAbsent(sourceSample,
                         k -> new SampleTraceDesc(splitTrace.sampleVar, toSampleHandle));
@@ -1766,6 +1786,20 @@ public class TracesImplementation extends Traces {
 
                 break;
             }
+        }
+    }
+
+    private static class SplitTrace {
+        // Splitting the trace into two parts, the part containing the gets and the part
+        // containing the puts
+        public final Trace fromConsumer = new Trace(); // Trace from the consuming task to the intermediate value.
+        public final Trace toSample = new Trace();
+        public Variable<?> sampleVar; // The variable holding the stored values.
+
+        @Override
+        public String toString() {
+            return "From the consumer:\n" + fromConsumer + "\nTo the sample task:\n" + toSample + "\nSample variable: "
+                    + sampleVar.getVarDesc() + "\n======\n";
         }
     }
 
@@ -2061,15 +2095,6 @@ public class TracesImplementation extends Traces {
     }
 
     @Override
-    public Set<Variable<?>> getIntermediateSampleVarDependencies(Variable<?> v) {
-        Set<Variable<?>> result = intermediateSampleVarDependencies.get(v);
-        if(result == null)
-            return Collections.emptySet();
-        else
-            return result;
-    }
-
-    @Override
     public Set<Variable<?>> getRequiredIntermediates(Variable<?> v) {
         Set<Variable<?>> result = requiredIntermediates.get(v.instanceHandle());
         if(result == null)
@@ -2097,7 +2122,6 @@ public class TracesImplementation extends Traces {
                     terminalSampleTasks.add(sourceSample);
                 sink = sink.getCurrentInstance();
                 findTerminalVariables(handle);
-                addToVarToSample(sink, sourceRV);
                 addVariableSource(handle, sourceSample);
 
                 // Populate sampleToRVTraces and intermediateChildrenTraces
@@ -2107,7 +2131,6 @@ public class TracesImplementation extends Traces {
                 SplitTrace splitTrace = splitTrace(handle);
                 TraceHandle toSampleHandle = TraceHandle.getTraceHandle(splitTrace.toSample);
                 setSampleVariableTraces.add(toSampleHandle);
-                addToVarToSample(splitTrace.sampleVar, sourceRV);
 
                 sampleTrace.computeIfAbsent(sourceSample,
                         k -> new SampleTraceDesc(splitTrace.sampleVar, toSampleHandle));
@@ -2160,27 +2183,6 @@ public class TracesImplementation extends Traces {
                 a.task.setIsDistribution();
             p.sink.setIsDistribution();
         }
-    }
-
-    /**
-     * Method storing the mapping from sampled random variables to the intermediate variables that depend on them.
-     * 
-     * @param sink   The variable consuming results from the source random variable.
-     * @param source The random variable being sampled to generate data used to produce the value of the sink.
-     */
-    private void addToVarToSample(Variable<?> sink, RandomVariable<?, ?> source) {
-        // Populate the sink to source lookup.
-        Set<RandomVariable<?, ?>> s = varToRV.computeIfAbsent(sink, k -> new HashSet<>());
-        s.add(source);
-    }
-
-    @Override
-    public Set<RandomVariable<?, ?>> getSourceRandomVariables(Variable<?> v) {
-        Set<RandomVariable<?, ?>> sources = varToRV.get(v);
-        if(sources == null)
-            return Collections.emptySet();
-        else
-            return sources;
     }
 
     @Override
@@ -2259,17 +2261,6 @@ public class TracesImplementation extends Traces {
     }
 
     private void constructDependencies(DAGInfo dagInfo) {
-        for(Variable<?> v:intermediateSampleTaskDependencies.keySet()) {
-            Set<Variable<?>> vdep = new HashSet<>();
-            for(SampleTask<?, ?> s:intermediateSampleTaskDependencies.get(v)) {
-                SampleTraceDesc sDesc = sampleTrace.get(s);
-                if(sDesc != null)
-                    vdep.add(sDesc.sampleVariable.instanceHandle());
-            }
-            if(!vdep.isEmpty())
-                intermediateSampleVarDependencies.put(v, vdep);
-        }
-
         Set<Variable<?>> requirements = new HashSet<>();
         for(TraceSinkPair p:dagInfo.allTraces()) {
             DataflowTaskArgDesc d = p.handle.get(0);
@@ -2294,11 +2285,6 @@ public class TracesImplementation extends Traces {
     @Override
     public Set<Variable<?>> getAllSampleVariables() {
         return sampleVariables;
-    }
-
-    @Override
-    public Set<Variable<?>> getIntermediates() {
-        return intermediateSampleVarDependencies.keySet();
     }
 
     @Override

@@ -1,7 +1,7 @@
 /*
  * Sandwood
  *
- * Copyright (c) 2019-2025, Oracle and/or its affiliates
+ * Copyright (c) 2019-2026, Oracle and/or its affiliates
  *
  * Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl/
  */
@@ -867,5 +867,18 @@ public abstract class VariableImplementation<A extends Variable<A>> implements V
             return parent.getLocation();
         else
             return location;
+    }
+
+    @Override
+    public boolean containsVariable(Variable<?> variable) {
+        return containsVariable(variable, new HashSet<>());
+    }
+
+    @Override
+    public boolean containsVariable(Variable<?> variable, Set<Variable<?>> seen) {
+        if(this == variable)
+            return true;
+        else
+            return getParent().containsVariable(variable, seen);
     }
 }

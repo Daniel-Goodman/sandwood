@@ -46,6 +46,7 @@ import org.sandwood.compiler.dataflowGraph.variables.Variable.Observed;
 import org.sandwood.compiler.dataflowGraph.variables.VariableName;
 import org.sandwood.compiler.dataflowGraph.variables.arrayVariable.ArrayVariable;
 import org.sandwood.compiler.dataflowGraph.variables.scalarVariables.BooleanVariable;
+import org.sandwood.compiler.dataflowGraph.variables.scalarVariables.DoubleVariable;
 import org.sandwood.compiler.exceptions.CompilerException;
 import org.sandwood.compiler.names.FunctionName;
 import org.sandwood.compiler.traces.Traces;
@@ -345,14 +346,16 @@ public class CompilationContext {
 
         private final List<IRTreeVoid> unorderedConstructors = new ArrayList<>();
         private final List<IRTreeVoid> scratchConstructors = new ArrayList<>();
-        private final List<VarConstructor> orderedConstructors = new ArrayList<>();
+        private final Map<Variable<?>, VarConstructor> orderedConstructors = new HashMap<>();
 
         public void addClassConstructor(GlobalVariableDescription<?> fieldName, Variable<?> v, IRTreeVoid constructor) {
             if(v == null)
                 unorderedConstructors.add(IRTree.treeScope(constructor, "Constructor for " + fieldName));
-            else
-                orderedConstructors
-                        .add(new VarConstructor(v, IRTree.treeScope(constructor, "Constructor for " + fieldName)));
+            else {
+                v = v.instanceHandle();
+                orderedConstructors.put(v,
+                        new VarConstructor(v, IRTree.treeScope(constructor, "Constructor for " + fieldName)));
+            }
         }
 
         public void addScratchConstructor(ScratchVariableDescription<?> fieldName, IRTreeVoid constructor) {
@@ -363,7 +366,7 @@ public class CompilationContext {
             List<IRTreeVoid> trees = new ArrayList<>();
 
             PriorityQueue<VarConstructor> p = new PriorityQueue<>();
-            p.addAll(orderedConstructors);
+            p.addAll(orderedConstructors.values());
             int size = p.size();
             for(int i = 0; i < size; i++) {
                 VarConstructor c = p.poll();
@@ -571,6 +574,7 @@ public class CompilationContext {
 
     // Java class field name, class field type.
     private final Map<VariableName, FieldDesc<?>> classFields = new HashMap<>();
+    private final Map<VariableName, Integer> classFieldArrayVersion = new HashMap<>();
 
     // Java scratch space field names.
     private final Set<ScratchVariableDescription<?>> scratchFields = new HashSet<>();
@@ -595,6 +599,9 @@ public class CompilationContext {
     public final ExecutionType target;
 
     public final Traces traces;
+
+    /** Map holding information about array differentials. */
+    private final Map<Variable<?>, Map<Variable<?>, Variable<?>>> differentials = new HashMap<>();
 
     /** A set to record which sub arrays are required in locations where only some sub arrays are required. */
     private Set<ArrayVariable<?>> requiredArrays = null;
@@ -622,6 +629,42 @@ public class CompilationContext {
         options.apply(this);
         codeGuard.push(null);
         clearAll();
+    }
+
+    /**
+     * Record the differential value of an variable with respect to another variable.
+     * 
+     * @param baseVar      The variable that is differentiated.
+     * @param diffVar      The variable the base far is differentiated with respect to.
+     * @param differential The variable representing the differential expression.
+     */
+    public <A extends Variable<A>> void addDifferential(Variable<A> baseVar, DoubleVariable diffVar,
+            Variable<A> differential) {
+
+        assert (baseVar.scope() == differential.scope());
+
+        // Note: if no entry is found in variable differentials map across the array variable
+        // and the variable differentiating upon, a new entry will be implicitly created.
+        Map<Variable<?>, Variable<?>> varDifferentials = differentials.computeIfAbsent(baseVar, k -> {
+            return new HashMap<>();
+        });
+
+        varDifferentials.put(diffVar, differential);
+
+        // Construct the traces
+        traces.addDifferentialVariable(differential, this);
+    }
+
+    public <A extends Variable<A>> A getDifferential(Variable<A> baseVar, DoubleVariable diffVar) {
+
+        Map<Variable<?>, Variable<?>> varDifferentials = differentials.get(baseVar);
+
+        // Note: if there are no differential entries
+        // to array differentials, the method will return null.
+        if(varDifferentials == null)
+            return null;
+
+        return (A) varDifferentials.get(diffVar);
     }
 
     /**
@@ -750,24 +793,54 @@ public class CompilationContext {
         addConstructedClassField(fieldname, null, null, fieldType, null, null);
     }
 
-    public <A extends Variable<A>> void addConstructedClassField(Variable<A> v, CompilationContext compilationCtx) {
+    public <A extends Variable<A>> void addConstructedClassField(Variable<A> v) {
+        v = v.instanceHandle();
         GlobalVariableDescription<A> fieldDesc = (GlobalVariableDescription<A>) v.getUniqueVarDesc();
         if(!classFields.containsKey(fieldDesc.name)) {
             ArrayDesc<?> arrayDesc = TreeUtils.getArrayDescription(v);
             if(arrayDesc == null)
                 addConstructedClassField(fieldDesc, null, v);
-            else
-                addConstructedClassFieldArray(v, fieldDesc, arrayDesc, compilationCtx);
+            else {
+                addConstructedClassFieldArray(v, fieldDesc, arrayDesc);
+                classFieldArrayVersion.put(fieldDesc.name, v.getCurrentInstance().getId());
+            }
+        } else {
+            Integer currentVersion = classFieldArrayVersion.get(fieldDesc.name);
+            // If the existing array has been updated since this was set. The only occurs for processes such as
+            // auto-differentiation, replace the constructor.
+            if(currentVersion != null) {
+                int latestVersion = v.getCurrentInstance().getId();
+                if(currentVersion < latestVersion) {
+                    classFieldArrayVersion.put(fieldDesc.name, latestVersion);
+                    ArrayDesc<?> arrayDesc = TreeUtils.getArrayDescription(v);
+                    updateConstructedClassFieldArray(v, fieldDesc, arrayDesc);
+                }
+            }
         }
     }
 
     private <A extends Variable<A>, B extends Variable<B>> void addConstructedClassFieldArray(Variable<A> v,
-            GlobalVariableDescription<A> fieldDesc, ArrayDesc<B> arrayDesc, CompilationContext compilationCtx) {
+            GlobalVariableDescription<A> fieldDesc, ArrayDesc<B> arrayDesc) {
         GlobalVariableDescription<ArrayVariable<B>> arrayName = fieldDesc.alternativeType(arrayDesc.type);
-        pushIsSerial(true);
-        IRTreeVoid allocator = allocate(arrayName, arrayDesc, compilationCtx);
-        popIsSerial();
+        IRTreeVoid allocator = allocate(arrayName, arrayDesc, this);
         addConstructedClassField(arrayName, allocator, v);
+    }
+
+    /**
+     * Method for updating the allocator for a field if the variable has been extended since the first construct field
+     * call.
+     * 
+     * @param <A>
+     * @param <B>
+     * @param v
+     * @param fieldDesc
+     * @param arrayDesc
+     */
+    private <A extends Variable<A>, B extends Variable<B>> void updateConstructedClassFieldArray(Variable<A> v,
+            GlobalVariableDescription<A> fieldDesc, ArrayDesc<B> arrayDesc) {
+        GlobalVariableDescription<ArrayVariable<B>> arrayName = fieldDesc.alternativeType(arrayDesc.type);
+        IRTreeVoid allocator = allocate(arrayName, arrayDesc, this);
+        allocators.addClassConstructor(arrayName, v, allocator);
     }
 
     private <A extends Variable<A>> void addConstructedClassField(GlobalVariableDescription<A> fieldname,

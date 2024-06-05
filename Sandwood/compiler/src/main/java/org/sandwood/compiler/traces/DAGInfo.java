@@ -1,7 +1,7 @@
 /*
  * Sandwood
  *
- * Copyright (c) 2019-2025, Oracle and/or its affiliates
+ * Copyright (c) 2019-2026, Oracle and/or its affiliates
  *
  * Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl/
  */
@@ -72,6 +72,7 @@ public class DAGInfo {
     private final List<TraceSinkPair> observedSourceTraces = new ArrayList<>();
     private final List<TraceSinkPair> randomVarTraces = new ArrayList<>();
     private final List<TraceSinkPair> terminalVarTraces = new ArrayList<>();
+    private final List<TraceSinkPair> differentialVarTraces = new ArrayList<>();
     private final List<TraceSinkPair> scopeConstraintVarTraces = new ArrayList<>();
     private final List<TraceSinkPair> allTraces = new ArrayList<>();
 
@@ -134,6 +135,21 @@ public class DAGInfo {
     }
 
     /**
+     * Add a consuming random variable as an end point, with a random variable, constant, or input as the source, and a
+     * trace from the sink to the source such that the sample task from the random variable is on the top of the stack.
+     * This is opposite to the output from the Traces interface as it is reversed internally.
+     *
+     * @param trace The trace between the two random variables.
+     * @param sink  The variable that this trace ends at once it is reversed.
+     */
+    public void addDifferentialChild(Trace trace, Variable<?> sink) {
+        TraceHandle h = TraceHandle.getReversedTraceHandle(trace);
+        TraceSinkPair p = new TraceSinkPair(h, sink);
+        differentialVarTraces.add(p);
+        allTraces.add(p);
+    }
+
+    /**
      * Adds a variable that is not consumed by anything else. This is added as a way of getting data out of the graph if
      * it is not returned by any other process. For example if we just sample a random variable at the end, but never
      * observe values for it.
@@ -175,6 +191,10 @@ public class DAGInfo {
 
     public List<TraceSinkPair> terminalVarTraces() {
         return terminalVarTraces;
+    }
+
+    public List<TraceSinkPair> differentialTraces() {
+        return differentialVarTraces;
     }
 
     public List<TraceSinkPair> scopeConstraintVarTraces() {

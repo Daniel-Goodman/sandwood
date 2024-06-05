@@ -1,7 +1,7 @@
 /*
  * Sandwood
  *
- * Copyright (c) 2019-2024, Oracle and/or its affiliates
+ * Copyright (c) 2019-2026, Oracle and/or its affiliates
  *
  * Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl/
  */
@@ -21,8 +21,7 @@ import org.sandwood.compiler.srcTools.sourceToSource.Location;
 import org.sandwood.compiler.trees.irTree.IRTree;
 import org.sandwood.compiler.trees.irTree.IRTreeReturn;
 
-public class Poisson extends RandomVariableImplementation<IntVariable, Poisson>
-        implements NumericRandomVariable<IntVariable, Poisson> {
+public class Poisson extends NumericRandomVariableImplementation<IntVariable, Poisson> {
     public final DoubleVariable rate;
 
     public Poisson(DoubleVariable rate, RandomVariableConstructorTask<IntVariable, Poisson> parent) {

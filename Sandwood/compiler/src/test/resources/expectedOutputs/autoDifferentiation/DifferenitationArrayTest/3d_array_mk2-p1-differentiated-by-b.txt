@@ -1,0 +1,145 @@
+Initial Graph
+if(guard)
+	e = c;
+else
+	e = ((d * d) * d);
+double[][] inner0 = array[0];
+double[] inner2 = inner0[0];
+inner2[0] = (a * a);
+inner2[1] = ((a * a) + (a * a));
+inner2[2] = (a - b);
+inner2[3] = (a * b);
+inner2[4] = 10.0;
+double[][] inner1 = array[1];
+double[] inner3 = inner1[0];
+inner3[0] = (e * (b * (b * b)));
+inner3[1] = (e / e);
+inner3[2] = 10.0;
+inner3[3] = 10.0;
+inner3[4] = (1.0 / (1 + Math.exp((-a))));
+p1 = array[0][0][0];
+
+
+Constants
+
+
+Allocator
+
+// Constructor for array
+{
+	array = new double[2][][];
+	double[][] subarray$0 = new double[1][];
+	array[0] = subarray$0;
+	subarray$0[0] = new double[5];
+	double[][] subarray$1 = new double[1][];
+	array[1] = subarray$1;
+	subarray$1[0] = new double[5];
+}
+
+
+Differential Graph: 'p1' differentiated by 'b'
+double diff$e$b$var1905;
+if(guard) {
+	e = c;
+	diff$e$b$var1905 = 0.0;
+} else {
+	e = ((d * d) * d);
+	diff$e$b$var1905 = (((d * d) * 0.0) + (d * ((d * 0.0) + (d * 0.0))));
+}
+double[][] diff$inner0$b = diff$array$b[0];
+double[] diff$inner2$b = diff$inner0$b[0];
+diff$inner2$b[0] = 0.0;
+diff$inner2$b[1] = 0.0;
+diff$inner2$b[1] = 0.0;
+diff$inner2$b[2] = (0.0 - 1.0);
+diff$inner2$b[1] = 0.0;
+diff$inner2$b[2] = (0.0 - 1.0);
+diff$inner2$b[3] = ((a * 1.0) + (b * 0.0));
+diff$inner2$b[1] = 0.0;
+diff$inner2$b[2] = (0.0 - 1.0);
+diff$inner2$b[3] = ((a * 1.0) + (b * 0.0));
+diff$inner2$b[4] = 0.0;
+double[][] diff$inner1$b = diff$array$b[1];
+double[] diff$inner3$b = diff$inner1$b[0];
+diff$inner3$b[0] = ((e * ((b * ((b * 1.0) + (b * 1.0))) + ((b * b) * 1.0))) + ((b * (b * b)) * diff$e$b$var1905));
+diff$inner3$b[1] = 0.0;
+diff$inner3$b[1] = 0.0;
+diff$inner3$b[1] = 0.0;
+diff$inner3$b[2] = 0.0;
+diff$inner3$b[1] = 0.0;
+diff$inner3$b[1] = 0.0;
+diff$inner3$b[2] = 0.0;
+diff$inner3$b[1] = 0.0;
+diff$inner3$b[2] = 0.0;
+diff$inner3$b[3] = 0.0;
+diff$inner3$b[1] = 0.0;
+diff$inner3$b[1] = 0.0;
+diff$inner3$b[2] = 0.0;
+diff$inner3$b[1] = 0.0;
+diff$inner3$b[2] = 0.0;
+diff$inner3$b[3] = 0.0;
+diff$inner3$b[1] = 0.0;
+diff$inner3$b[2] = 0.0;
+diff$inner3$b[3] = 0.0;
+diff$inner3$b[4] = 0.0;
+diff$p1$b = diff$array$b[0][0][0];
+
+
+Optimised
+if(guard)
+	e = c;
+else
+	e = ((d * d) * d);
+
+// Substituted "diff$inner0$b" with its value "diff$array$b[0]".
+double[] diff$inner2$b = diff$array$b[0][0];
+diff$inner2$b[0] = 0.0;
+diff$inner2$b[1] = 0.0;
+diff$inner2$b[2] = -1.0;
+diff$inner2$b[3] = a;
+diff$inner2$b[4] = 0.0;
+
+// Substituted "diff$inner1$b" with its value "diff$array$b[1]".
+double[] diff$inner3$b = diff$array$b[1][0];
+
+// Substituted "diff$e$b$var1905" with its value "0.0".
+diff$inner3$b[0] = (e * ((b * (b + b)) + (b * b)));
+diff$inner3$b[1] = 0.0;
+diff$inner3$b[2] = 0.0;
+diff$inner3$b[3] = 0.0;
+diff$inner3$b[4] = 0.0;
+diff$p1$b = diff$array$b[0][0][0];
+
+
+Additional Constants
+double[][] diff$inner0$b = diff$array$b[0];
+double[] diff$inner2$b = diff$inner0$b[0];
+diff$inner2$b[0] = 0.0;
+diff$inner2$b[1] = 0.0;
+diff$inner2$b[1] = 0.0;
+diff$inner2$b[1] = 0.0;
+diff$inner2$b[2] = (0.0 - 1.0);
+
+
+Updated Allocator
+// Constructor for array
+{
+	array = new double[2][][];
+	double[][] subarray$0 = new double[1][];
+	array[0] = subarray$0;
+	subarray$0[0] = new double[5];
+	double[][] subarray$1 = new double[1][];
+	array[1] = subarray$1;
+	subarray$1[0] = new double[5];
+}
+
+// Constructor for diff$array$b
+{
+	diff$array$b = new double[2][][];
+	double[][] subarray$0 = new double[1][];
+	diff$array$b[0] = subarray$0;
+	subarray$0[0] = new double[5];
+	double[][] subarray$1 = new double[1][];
+	diff$array$b[1] = subarray$1;
+	subarray$1[0] = new double[5];
+}

@@ -1,0 +1,147 @@
+Initial Graph
+for(int i = 0; i < 10; i += 1) {
+	double[][] var44 = array[i];
+	for(int j = 0; j < 10; j += 1) {
+		for(int k = 0; k < 10; k += 1) {
+			double[] var45 = var44[j];
+			var45[k] = (a * (i * j));
+		}
+	}
+	c = array[i][0][0];
+}
+d = array[0][0][0];
+
+
+Constants
+
+
+Allocator
+// Constructor for array
+{
+	array = new double[10][][];
+	for(int i = 0; i < 10; i += 1) {
+		double[][] subarray$0 = new double[10][];
+		array[i] = subarray$0;
+		for(int j = 0; j < 10; j += 1)
+			subarray$0[j] = new double[10];
+	}
+}
+
+// Constructor for c
+{
+	c = new double[((((10 - 1) - 0) / 1) + 1)];
+}
+
+
+Differential Graph: 'c' differentiated by 'a'
+for(int i = 0; i < 10; i += 1) {
+	for(int j = 0; j < 10; j += 1) {
+		for(int k = 0; k < 10; k += 1) {
+			double[][] diff$var44$a = diff$array$a[i];
+			double[] diff$var45$a = diff$var44$a[j];
+			diff$var45$a[k] = ((a * 0.0) + ((i * j) * 1.0));
+		}
+	}
+	diff$c$a = diff$array$a[i][0][0];
+}
+
+
+Optimised
+for(int i = 0; i < 10; i += 1) {
+	for(int j = 0; j < 10; j += 1) {
+		for(int k = 0; k < 10; k += 1)
+						// diff$var45$a's comment
+			// Substituted "diff$var44$a" with its value "diff$array$a[i]".
+			diff$array$a[i][j][k] = (double)(i * j);
+	}
+	diff$c$a = diff$array$a[i][0][0];
+}
+
+
+Additional Constants
+
+
+Updated Allocator
+// Constructor for array
+{
+	array = new double[10][][];
+	for(int i = 0; i < 10; i += 1) {
+		double[][] subarray$0 = new double[10][];
+		array[i] = subarray$0;
+		for(int j = 0; j < 10; j += 1)
+			subarray$0[j] = new double[10];
+	}
+}
+
+// Constructor for c
+{
+	c = new double[((((10 - 1) - 0) / 1) + 1)];
+}
+
+// Constructor for diff$array$a
+{
+	diff$array$a = new double[10][][];
+	for(int i = 0; i < 10; i += 1) {
+		double[][] subarray$0 = new double[10][];
+		diff$array$a[i] = subarray$0;
+		for(int j = 0; j < 10; j += 1)
+			subarray$0[j] = new double[10];
+	}
+}
+
+
+Differential Graph: 'd' differentiated by 'a'
+for(int i = 0; i < 10; i += 1) {
+	for(int j = 0; j < 10; j += 1) {
+		for(int k = 0; k < 10; k += 1) {
+			double[][] diff$var44$a = diff$array$a[i];
+			double[] diff$var45$a = diff$var44$a[j];
+			diff$var45$a[k] = ((a * 0.0) + ((i * j) * 1.0));
+		}
+	}
+}
+diff$d$a = diff$array$a[0][0][0];
+
+
+Optimised
+for(int i = 0; i < 10; i += 1) {
+	for(int j = 0; j < 10; j += 1) {
+		for(int k = 0; k < 10; k += 1)
+						// diff$var45$a's comment
+			// Substituted "diff$var44$a" with its value "diff$array$a[i]".
+			diff$array$a[i][j][k] = (double)(i * j);
+	}
+}
+diff$d$a = diff$array$a[0][0][0];
+
+
+Additional Constants
+
+
+Updated Allocator
+// Constructor for array
+{
+	array = new double[10][][];
+	for(int i = 0; i < 10; i += 1) {
+		double[][] subarray$0 = new double[10][];
+		array[i] = subarray$0;
+		for(int j = 0; j < 10; j += 1)
+			subarray$0[j] = new double[10];
+	}
+}
+
+// Constructor for c
+{
+	c = new double[((((10 - 1) - 0) / 1) + 1)];
+}
+
+// Constructor for diff$array$a
+{
+	diff$array$a = new double[10][][];
+	for(int i = 0; i < 10; i += 1) {
+		double[][] subarray$0 = new double[10][];
+		diff$array$a[i] = subarray$0;
+		for(int j = 0; j < 10; j += 1)
+			subarray$0[j] = new double[10];
+	}
+}

@@ -1,0 +1,19 @@
+Initial Graph
+d = (int)a
+
+Constants
+
+
+Allocator
+
+
+Differential Graph: 'd' differentiated by 'b'
+diff$d$b = 0.0
+
+Optimised
+diff$d$b = 0.0
+
+Additional Constants
+
+
+Updated Allocator

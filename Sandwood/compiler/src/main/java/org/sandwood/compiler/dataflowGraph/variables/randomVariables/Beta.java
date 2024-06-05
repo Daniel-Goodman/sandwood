@@ -1,7 +1,7 @@
 /*
  * Sandwood
  *
- * Copyright (c) 2019-2024, Oracle and/or its affiliates
+ * Copyright (c) 2019-2026, Oracle and/or its affiliates
  *
  * Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl/
  */
@@ -21,8 +21,7 @@ import org.sandwood.compiler.srcTools.sourceToSource.Location;
 import org.sandwood.compiler.trees.irTree.IRTree;
 import org.sandwood.compiler.trees.irTree.IRTreeReturn;
 
-public class Beta extends RandomVariableImplementation<DoubleVariable, Beta>
-        implements NumericRandomVariable<DoubleVariable, Beta> {
+public class Beta extends NumericRandomVariableImplementation<DoubleVariable, Beta> {
     public final DoubleVariable alpha;
     public final DoubleVariable beta;
 

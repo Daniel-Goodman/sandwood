@@ -1,0 +1,19 @@
+Initial Graph
+d = Math.log(a)
+
+Constants
+
+
+Allocator
+
+
+Differential Graph: 'd' differentiated by 'a'
+diff$d$a = (1.0 / a)
+
+Optimised
+diff$d$a = (1.0 / a)
+
+Additional Constants
+
+
+Updated Allocator

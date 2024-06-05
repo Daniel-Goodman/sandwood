@@ -1,0 +1,33 @@
+Initial Graph
+array[0] = a;
+array[1] = a;
+array[2] = 0.5;
+d = array[1];
+
+
+Constants
+
+
+Allocator
+
+// Constructor for array
+{
+	array = new double[3];
+}
+
+
+Differential Graph: 'd' differentiated by 'b'
+diff$d$b = 0.0
+
+Optimised
+diff$d$b = 0.0
+
+Additional Constants
+
+
+Updated Allocator
+
+// Constructor for array
+{
+	array = new double[3];
+}

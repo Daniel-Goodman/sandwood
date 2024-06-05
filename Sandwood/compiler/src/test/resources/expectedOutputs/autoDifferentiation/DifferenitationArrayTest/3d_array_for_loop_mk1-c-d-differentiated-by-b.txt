@@ -1,0 +1,89 @@
+Initial Graph
+for(int i = 0; i < 10; i += 1) {
+	double[][] var44 = array[i];
+	for(int j = 0; j < 10; j += 1) {
+		for(int k = 0; k < 10; k += 1) {
+			double[] var45 = var44[j];
+			var45[k] = (a * (i * j));
+		}
+	}
+	c = array[i][0][0];
+}
+d = array[0][0][0];
+
+
+Constants
+
+
+Allocator
+// Constructor for array
+{
+	array = new double[10][][];
+	for(int i = 0; i < 10; i += 1) {
+		double[][] subarray$0 = new double[10][];
+		array[i] = subarray$0;
+		for(int j = 0; j < 10; j += 1)
+			subarray$0[j] = new double[10];
+	}
+}
+
+// Constructor for c
+{
+	c = new double[((((10 - 1) - 0) / 1) + 1)];
+}
+
+
+Differential Graph: 'c' differentiated by 'b'
+for(int i = 0; i < 10; i += 1)
+	diff$c$b = 0.0;
+
+
+Optimised
+diff$c$b = 0.0
+
+Additional Constants
+
+
+Updated Allocator
+// Constructor for array
+{
+	array = new double[10][][];
+	for(int i = 0; i < 10; i += 1) {
+		double[][] subarray$0 = new double[10][];
+		array[i] = subarray$0;
+		for(int j = 0; j < 10; j += 1)
+			subarray$0[j] = new double[10];
+	}
+}
+
+// Constructor for c
+{
+	c = new double[((((10 - 1) - 0) / 1) + 1)];
+}
+
+
+Differential Graph: 'd' differentiated by 'b'
+diff$d$b = 0.0
+
+Optimised
+diff$d$b = 0.0
+
+Additional Constants
+
+
+Updated Allocator
+// Constructor for array
+{
+	array = new double[10][][];
+	for(int i = 0; i < 10; i += 1) {
+		double[][] subarray$0 = new double[10][];
+		array[i] = subarray$0;
+		for(int j = 0; j < 10; j += 1)
+			subarray$0[j] = new double[10];
+	}
+}
+
+// Constructor for c
+{
+	c = new double[((((10 - 1) - 0) / 1) + 1)];
+}

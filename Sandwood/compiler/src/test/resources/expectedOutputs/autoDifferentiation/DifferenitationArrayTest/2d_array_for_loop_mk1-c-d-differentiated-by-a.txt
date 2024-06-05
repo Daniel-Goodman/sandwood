@@ -1,0 +1,111 @@
+Initial Graph
+for(int i = 0; i < 10; i += 1) {
+	double[] var32 = array[i];
+	for(int j = 0; j < 10; j += 1)
+		var32[j] = (a * i);
+	c = array[i][0];
+}
+d = array[0][0];
+
+
+Constants
+
+
+Allocator
+// Constructor for array
+{
+	array = new double[10][];
+	for(int i = 0; i < 10; i += 1)
+		array[i] = new double[10];
+}
+
+// Constructor for c
+{
+	c = new double[((((10 - 1) - 0) / 1) + 1)];
+}
+
+
+Differential Graph: 'c' differentiated by 'a'
+for(int i = 0; i < 10; i += 1) {
+	for(int j = 0; j < 10; j += 1) {
+		double[] diff$var32$a = diff$array$a[i];
+		diff$var32$a[j] = ((a * 0.0) + (i * 1.0));
+	}
+	diff$c$a = diff$array$a[i][0];
+}
+
+
+Optimised
+for(int i = 0; i < 10; i += 1) {
+	for(int j = 0; j < 10; j += 1)
+		// Substituted "diff$var32$a" with its value "diff$array$a[i]".
+		diff$array$a[i][j] = (double)i;
+	diff$c$a = diff$array$a[i][0];
+}
+
+
+Additional Constants
+
+
+Updated Allocator
+// Constructor for array
+{
+	array = new double[10][];
+	for(int i = 0; i < 10; i += 1)
+		array[i] = new double[10];
+}
+
+// Constructor for c
+{
+	c = new double[((((10 - 1) - 0) / 1) + 1)];
+}
+
+// Constructor for diff$array$a
+{
+	diff$array$a = new double[10][];
+	for(int i = 0; i < 10; i += 1)
+		diff$array$a[i] = new double[10];
+}
+
+
+Differential Graph: 'd' differentiated by 'a'
+for(int i = 0; i < 10; i += 1) {
+	for(int j = 0; j < 10; j += 1) {
+		double[] diff$var32$a = diff$array$a[i];
+		diff$var32$a[j] = ((a * 0.0) + (i * 1.0));
+	}
+}
+diff$d$a = diff$array$a[0][0];
+
+
+Optimised
+for(int i = 0; i < 10; i += 1) {
+	for(int j = 0; j < 10; j += 1)
+		// Substituted "diff$var32$a" with its value "diff$array$a[i]".
+		diff$array$a[i][j] = (double)i;
+}
+diff$d$a = diff$array$a[0][0];
+
+
+Additional Constants
+
+
+Updated Allocator
+// Constructor for array
+{
+	array = new double[10][];
+	for(int i = 0; i < 10; i += 1)
+		array[i] = new double[10];
+}
+
+// Constructor for c
+{
+	c = new double[((((10 - 1) - 0) / 1) + 1)];
+}
+
+// Constructor for diff$array$a
+{
+	diff$array$a = new double[10][];
+	for(int i = 0; i < 10; i += 1)
+		diff$array$a[i] = new double[10];
+}

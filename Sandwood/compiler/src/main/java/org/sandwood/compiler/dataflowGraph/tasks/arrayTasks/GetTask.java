@@ -1,7 +1,7 @@
 /*
  * Sandwood
  *
- * Copyright (c) 2019-2025, Oracle and/or its affiliates
+ * Copyright (c) 2019-2026, Oracle and/or its affiliates
  *
  * Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl/
  */
@@ -182,5 +182,21 @@ public abstract class GetTask<A extends Variable<A>> extends ProducingDataflowTa
 
     public boolean isImplicit() {
         return implicit;
+    }
+
+    @Override
+    public boolean containsVariable(Variable<?> variable, Set<Variable<?>> seen) {
+        if(index.containsVariable(variable, seen))
+            return true;
+
+        // Check if any of the put values contains variable.
+        Set<PutTask<A>> puts = array.getPuts(scope(), id());
+        for(PutTask<A> put:puts) {
+            if(put.containsVariable(variable, seen)) {
+                return true;
+            }
+        }
+
+        return array.instanceHandle().containsVariable(variable, seen);
     }
 }

@@ -1,7 +1,7 @@
 /*
  * Sandwood
  *
- * Copyright (c) 2019-2024, Oracle and/or its affiliates
+ * Copyright (c) 2019-2026, Oracle and/or its affiliates
  *
  * Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl/
  */
@@ -9,8 +9,10 @@
 package org.sandwood.compiler.dataflowGraph.tasks;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.sandwood.compiler.compilation.CompilationContext;
 import org.sandwood.compiler.dataflowGraph.Id;
@@ -41,7 +43,7 @@ public abstract class DataflowTaskImplementation<A extends Variable<A>> extends 
     protected boolean inlineableTask = true;
 
     private boolean isDistribution = false;
-    
+
     private final DFType dfType;
 
     /**
@@ -293,5 +295,22 @@ public abstract class DataflowTaskImplementation<A extends Variable<A>> extends 
             if(outputSet())
                 getOutput().setIsDistribution();
         }
+    }
+
+    protected boolean containsVariable(Variable<?> variable) {
+        return containsVariable(variable, new HashSet<>());
+    }
+
+    @Override
+    public boolean containsVariable(Variable<?> variable, Set<Variable<?>> seen) {
+        for(Variable<?> input:inputs) {
+            ;
+            if(!seen.contains(input)) {
+                seen.add(input);
+                if(input.containsVariable(variable, seen))
+                    return true;
+            }
+        }
+        return false;
     }
 }

@@ -1,0 +1,42 @@
+Initial Graph
+array[1] = (a * a);
+array[2] = (b * (b * b));
+d = array[0];
+
+
+Constants
+array[0] = 0.5
+
+Allocator
+
+// Constructor for array
+{
+	array = new double[3];
+}
+
+
+Differential Graph: 'd' differentiated by 'b'
+diff$array$b[2] = ((b * ((b * 1.0) + (b * 1.0))) + ((b * b) * 1.0));
+diff$d$b = diff$array$b[0];
+
+
+Optimised
+diff$array$b[2] = ((b * (b + b)) + (b * b));
+diff$d$b = diff$array$b[0];
+
+
+Additional Constants
+diff$array$b[0] = 0.0;
+diff$array$b[1] = 0.0;
+
+
+Updated Allocator
+// Constructor for array
+{
+	array = new double[3];
+}
+
+// Constructor for diff$array$b
+{
+	diff$array$b = new double[3];
+}

@@ -19,7 +19,11 @@ import org.sandwood.compiler.trees.transformationTree.TransTreeVoid;
 
 public abstract class Transformer {
 
-    public Set<TransTree<?>> visitedNodes = new HashSet<>();
+    public Set<TransTree<?>> visitedNodes;
+
+    protected Transformer() {
+        visitedNodes = new HashSet<>();
+    }
 
     public <T extends TransTree<T>> T transform(TransTree<T> transTree, Set<TransTree<?>> visitedNodes) {
         this.visitedNodes = visitedNodes;

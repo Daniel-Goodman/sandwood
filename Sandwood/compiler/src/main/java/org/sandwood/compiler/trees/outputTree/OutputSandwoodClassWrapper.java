@@ -46,6 +46,16 @@ import org.sandwood.compiler.trees.Tree;
 import org.sandwood.compiler.trees.Visibility;
 
 public class OutputSandwoodClassWrapper extends OutputSandwoodOuterClass {
+    private static final List<String> requiredImports = List.of("org.sandwood.runtime.model.ExecutionTarget",
+            "org.sandwood.runtime.model.variables.*", 
+            "org.sandwood.runtime.internal.model.CoreModelBase",
+            "org.sandwood.runtime.internal.model.variables.*",
+            "org.sandwood.runtime.internal.model.variables.probability.ProbabilityType",
+            "org.sandwood.common.exceptions.SandwoodException",
+            "org.sandwood.runtime.exceptions.SandwoodRuntimeException", 
+            "java.util.Map", 
+            "java.util.HashMap");
+
     private static class RandomVariableDesc implements Comparable<RandomVariableDesc> {
         public final VariableName name;
         public final VariableName uniqueName;
@@ -223,15 +233,7 @@ public class OutputSandwoodClassWrapper extends OutputSandwoodOuterClass {
 
     @Override
     protected void toJavaBody(StringBuilder sb, int indent, Set<String> requiredImports) {
-        requiredImports.add("org.sandwood.runtime.model.ExecutionTarget");
-        requiredImports.add("org.sandwood.runtime.model.variables.*");
-        requiredImports.add("org.sandwood.runtime.internal.model.CoreModelBase");
-        requiredImports.add("org.sandwood.runtime.internal.model.variables.*");
-        requiredImports.add("org.sandwood.runtime.internal.model.variables.probability.ProbabilityType");
-        requiredImports.add("org.sandwood.common.exceptions.SandwoodException");
-        requiredImports.add("org.sandwood.runtime.exceptions.SandwoodRuntimeException");
-        requiredImports.add("java.util.Map");
-        requiredImports.add("java.util.HashMap");
+        requiredImports.addAll(OutputSandwoodClassWrapper.requiredImports);
 
         // Construct computed fields
         {

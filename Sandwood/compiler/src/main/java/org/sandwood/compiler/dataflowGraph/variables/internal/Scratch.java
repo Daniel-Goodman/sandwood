@@ -16,7 +16,7 @@ import org.sandwood.compiler.dataflowGraph.variables.VariableType.Type;
 import org.sandwood.compiler.srcTools.sourceToSource.Location;
 
 /**
- * An uninstantiatable class used to parameterize the generics on VariableDescription classes.
+ * A class that cannot be instantiated. It is used to parameterize the generics on VariableDescription classes.
  * 
  * @author djgoodma
  * 
@@ -26,9 +26,8 @@ import org.sandwood.compiler.srcTools.sourceToSource.Location;
  *
  */
 public abstract class Scratch extends VariableImplementation<Scratch> implements ObjectVariable<Scratch> {
-    
-    public static final Type<Scratch> scratchType = new BaseType<>("null",
-            "Scratch Space") {};
+
+    public static final Type<Scratch> scratchType = new BaseType<>("null", "Scratch Space") {};
 
     private Scratch() {
         super(null);

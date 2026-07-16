@@ -159,18 +159,18 @@ public class TransSandwoodClassGenerated {
     public OutputSandwoodClassGenerated toOutputTree() {
         // Turn the individual field declarations into a single tree.
         PriorityQueue<VariableName> fieldNames = new PriorityQueue<>(classFieldTrees.keySet());
-        List<TransTreeVoid> declarations = new ArrayList<>();
+        List<TransTreeVoid> stateDeclarations = new ArrayList<>();
         while(!fieldNames.isEmpty())
-            declarations.add(classFieldTrees.get(fieldNames.poll()));
-        OutputTree classFieldsTree = TransTree.sequential(declarations, "Declare the variables for the model.")
+            stateDeclarations.add(classFieldTrees.get(fieldNames.poll()));
+        OutputTree classFieldsTree = TransTree.sequential(stateDeclarations, "Declare the variables for the model.")
                 .toOutputTree(RNGLocation.GLOBAL, TreeLocation.STATE, target);
 
-        declarations = new ArrayList<>();
+        List<TransTreeVoid> scratchDeclarations = new ArrayList<>();
         fieldNames.addAll(scratchFieldTrees.keySet());
         while(!fieldNames.isEmpty())
-            declarations.add(scratchFieldTrees.get(fieldNames.poll()));
+            scratchDeclarations.add(scratchFieldTrees.get(fieldNames.poll()));
         OutputTree scratchFieldsTree = TransTree
-                .sequential(declarations, "Declare the scratch variables for the model.")
+                .sequential(scratchDeclarations, "Declare the scratch variables for the model.")
                 .toOutputTree(RNGLocation.GLOBAL, TreeLocation.SCRATCH, target);
 
         Map<FunctionName, OutputFunction> functionMap = new HashMap<>();

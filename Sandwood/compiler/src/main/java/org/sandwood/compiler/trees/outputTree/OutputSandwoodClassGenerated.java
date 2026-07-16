@@ -24,7 +24,7 @@ import org.sandwood.compiler.names.PackageName;
 import org.sandwood.compiler.trees.Tree;
 import org.sandwood.compiler.util.StringUtil;
 
-public class OutputSandwoodClassGenerated extends OutputSandwoodOuterClass {
+public final class OutputSandwoodClassGenerated extends OutputSandwoodOuterClass {
 
     private static final class ScratchClass extends OutputSandwoodInnerClass {
         public ScratchClass(OutputFunction allocator, OutputTree fieldsTree) {

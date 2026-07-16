@@ -19,7 +19,8 @@ import java.util.Map;
 import org.sandwood.compiler.names.ClassName;
 import org.sandwood.compiler.names.PackageName;
 
-public abstract class OutputSandwoodOuterClass extends OutputSandwoodClass {
+public sealed abstract class OutputSandwoodOuterClass extends OutputSandwoodClass
+        permits OutputSandwoodClassGenerated, OutputSandwoodClassWrapper {
 
     public OutputSandwoodOuterClass(PackageName packageName, ClassName name, ClassName extended,
             List<ClassName> generics, List<ClassName> interfaces, List<OutputSandwoodInnerClass> innerClasses) {

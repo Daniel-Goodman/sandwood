@@ -31,7 +31,7 @@ import org.sandwood.compiler.trees.transformationTree.TransTree.RNGLocation;
 import org.sandwood.compiler.trees.transformationTree.TransTree.TreeLocation;
 import org.sandwood.compiler.trees.transformationTree.visitors.TreeVisitor;
 
-public class TransSandwoodClassGenerated {
+public final class TransSandwoodClassGenerated {
 
     private final ExecutionType target;
     private final ModelClassName name;

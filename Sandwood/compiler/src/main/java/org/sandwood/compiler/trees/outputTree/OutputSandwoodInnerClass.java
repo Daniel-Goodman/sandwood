@@ -17,7 +17,7 @@ import org.sandwood.compiler.names.ClassName;
 import org.sandwood.compiler.names.PackageName;
 import org.sandwood.compiler.trees.Tree;
 
-public class OutputSandwoodInnerClass extends OutputSandwoodClass {
+public non-sealed class OutputSandwoodInnerClass extends OutputSandwoodClass {
 
     // Variable field name |-> Field Descriptor
     private final OutputTree fieldsTree;

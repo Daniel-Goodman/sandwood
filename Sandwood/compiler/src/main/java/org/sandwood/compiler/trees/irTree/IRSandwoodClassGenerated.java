@@ -35,7 +35,7 @@ import org.sandwood.compiler.trees.transformationTree.TransFunction;
 import org.sandwood.compiler.trees.transformationTree.TransSandwoodClassGenerated;
 import org.sandwood.compiler.trees.transformationTree.TransTreeVoid;
 
-public class IRSandwoodClassGenerated {
+public final class IRSandwoodClassGenerated {
 
     private final ExecutionType target;
     private final ModelClassName name;

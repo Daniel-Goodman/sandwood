@@ -18,7 +18,8 @@ import org.sandwood.compiler.names.ClassName;
 import org.sandwood.compiler.names.PackageName;
 import org.sandwood.compiler.trees.Tree;
 
-public abstract class OutputSandwoodClass implements Comparable<OutputSandwoodClass> {
+public sealed abstract class OutputSandwoodClass implements Comparable<OutputSandwoodClass>
+        permits OutputSandwoodOuterClass, OutputSandwoodInnerClass {
 
     private final PackageName packageName;
     private final ClassName name;

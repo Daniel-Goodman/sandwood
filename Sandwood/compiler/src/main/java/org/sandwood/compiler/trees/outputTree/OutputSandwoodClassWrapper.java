@@ -45,7 +45,7 @@ import org.sandwood.compiler.trees.ArgDesc;
 import org.sandwood.compiler.trees.Tree;
 import org.sandwood.compiler.trees.Visibility;
 
-public class OutputSandwoodClassWrapper extends OutputSandwoodOuterClass {
+public final class OutputSandwoodClassWrapper extends OutputSandwoodOuterClass {
     private static final List<String> requiredImports = List.of("org.sandwood.runtime.model.ExecutionTarget",
             "org.sandwood.runtime.model.variables.*", 
             "org.sandwood.runtime.internal.model.CoreModelBase",
